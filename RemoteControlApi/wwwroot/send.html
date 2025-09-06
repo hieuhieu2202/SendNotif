@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Send Notification</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Send Notification</h1>
+  <form id="notifyForm">
+    <label>Title
+      <input id="title" name="title" required>
+    </label>
+    <label>Body
+      <textarea id="body" name="body" required></textarea>
+    </label>
+    <button type="submit">Send</button>
+  </form>
+  <pre id="result"></pre>
+  <script>
+    const form = document.getElementById('notifyForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch('/api/control/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: form.title.value, body: form.body.value })
+      });
+      const json = await res.json();
+      document.getElementById('result').textContent = JSON.stringify(json, null, 2);
+      form.reset();
+    });
+  </script>
+</body>
+</html>
