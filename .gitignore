@@ -1,0 +1,13 @@
+﻿# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+
+# Build
+**/bin/
+**/obj/
+*.log
+
+# Others
+*.DS_Store
