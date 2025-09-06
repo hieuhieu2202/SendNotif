@@ -125,6 +125,7 @@ namespace RemoteControlApi.Controllers
         [HttpPost("app-version/upload")]
         [RequestSizeLimit(1_500_000_000)] // ~1.5GB, điều chỉnh tuỳ nhu cầu
         [DisableRequestSizeLimit]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadBuild(
             [FromForm][Required] string latest,
             [FromForm][Required] string minSupported,
@@ -132,7 +133,7 @@ namespace RemoteControlApi.Controllers
             [FromForm] string? notesEn,
             [FromForm][Required] string platform,
             [FromForm] int? build,
-            [FromForm][Required] IFormFile file)
+            [Required] IFormFile file)
         {
             platform = platform.Trim().ToLowerInvariant();
             if (platform is not ("android" or "ios"))
