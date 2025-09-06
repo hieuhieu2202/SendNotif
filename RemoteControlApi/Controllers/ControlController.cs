@@ -209,7 +209,10 @@ namespace RemoteControlApi.Controllers
             if (_appVersion.Files == null || !_appVersion.Files.TryGetValue(platform, out var fileInfo))
                 return NotFound(new { error = "No build available for this platform" });
 
-            var path = Path.Combine(StoreRoot, fileInfo.RelativePath);
+            var relPath = fileInfo.RelativePath;
+            if (string.IsNullOrEmpty(relPath))
+                return NotFound(new { error = "File path not specified" });
+            var path = Path.Combine(StoreRoot, relPath);
             if (!System.IO.File.Exists(path))
                 return NotFound(new { error = "File not found on server" });
 
@@ -233,7 +236,9 @@ namespace RemoteControlApi.Controllers
             if (_appVersion.Files == null || !_appVersion.Files.TryGetValue(platform, out var fileInfo))
                 return NotFound();
 
-            var path = Path.Combine(StoreRoot, fileInfo.RelativePath);
+            var relPathHead = fileInfo.RelativePath;
+            if (string.IsNullOrEmpty(relPathHead)) return NotFound();
+            var path = Path.Combine(StoreRoot, relPathHead);
             if (!System.IO.File.Exists(path)) return NotFound();
 
             Response.Headers[HeaderNames.ContentLength] = fileInfo.SizeBytes.ToString();
