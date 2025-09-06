@@ -78,7 +78,9 @@ namespace RemoteControlApi.Controllers
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
             message.TimestampUtc = DateTimeOffset.UtcNow;
-            message.Id = Guid.NewGuid().ToString("n");
+            message.Id = string.IsNullOrWhiteSpace(message.Id)
+                ? Guid.NewGuid().ToString("n")
+                : message.Id;
             _notifications.Enqueue(message);
             while (_notifications.Count > MaxNotifications && _notifications.TryDequeue(out _)) { }
             SetNoCache();
@@ -264,7 +266,7 @@ namespace RemoteControlApi.Controllers
     // ================== Models ==================
     public class NotificationMessage
     {
-        public string Id { get; set; } = default!;
+        public string? Id { get; set; }
         [Required, StringLength(120)] public string Title { get; set; } = default!;
         [Required, StringLength(4000)] public string Body { get; set; } = default!;
         public DateTimeOffset TimestampUtc { get; set; }
