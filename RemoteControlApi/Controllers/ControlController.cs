@@ -74,84 +74,48 @@ namespace RemoteControlApi.Controllers
 
 
         [HttpPost("send-notification")]
-        [Consumes("application/json", "multipart/form-data")]
+        [Consumes("application/json")]
+        public IActionResult SendNotificationJson([FromBody] NotificationMessage message)
+        {
+            return HandleNotification(message);
+        }
 
-        public async Task<IActionResult> SendNotificationUnified()
+        [HttpPost("send-notification")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> SendNotificationForm([FromForm] NotificationMessage message, IFormFile? file)
         {
             try
             {
-                NotificationMessage msg;
-
-                if (Request.HasFormContentType)
+                if (file is { Length: > 0 })
                 {
-                    // multipart/form-data (hoặc x-www-form-urlencoded)
-                    var form = await Request.ReadFormAsync();
+                    var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+                    Directory.CreateDirectory(webrootPath);
+                    var uploads = Path.Combine(webrootPath, "uploads");
+                    Directory.CreateDirectory(uploads);
 
-                    msg = new NotificationMessage
+                    var ext = Path.GetExtension(file.FileName);
+                    if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+
+                    var fileName = $"{Guid.NewGuid():N}{ext}";
+                    var fullPath = Path.Combine(uploads, fileName);
+
+                    await using (var fs = System.IO.File.Create(fullPath))
                     {
-                        Id = string.IsNullOrWhiteSpace(form["id"]) ? null : form["id"].ToString(),
-                        Title = form["title"],
-                        Body = form["body"]
-                    };
-
-                    // file là tuỳ chọn
-                    var file = form.Files.GetFile("file");
-                    if (file is { Length: > 0 })
-                    {
-                        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-                        var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-                        Directory.CreateDirectory(webrootPath);
-                        var uploads = Path.Combine(webrootPath, "uploads");
-                        Directory.CreateDirectory(uploads);
-
-                        var ext = Path.GetExtension(file.FileName);
-                        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
-
-                        var fileName = $"{Guid.NewGuid():N}{ext}";
-                        var fullPath = Path.Combine(uploads, fileName);
-
-                        await using (var fs = System.IO.File.Create(fullPath))
-                        {
-                            await file.CopyToAsync(fs);
-                        }
-
-                        // thêm base path vào URL trả về
-                        var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-                        // (Nếu muốn URL tuyệt đối thì dùng: $"{Request.Scheme}://{Request.Host}{basePath}/uploads/{fileName}")
-                        msg.FileUrl = $"{basePath}/uploads/{fileName}";
-
+                        await file.CopyToAsync(fs);
                     }
-                }
-                else if (Request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    // application/json (đọc trực tiếp stream, không cần ReadToEnd)
-                    msg = await JsonSerializer.DeserializeAsync<NotificationMessage>(
-                              Request.Body,
-                              new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                          ) ?? new NotificationMessage();
-                }
-                else
-                {
-                    return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
-                    {
-                        error = "Unsupported Content-Type. Hãy dùng application/json hoặc multipart/form-data."
-                    });
+
+                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
+                    message.FileUrl = $"{basePath}/uploads/{fileName}";
                 }
 
-                // Validate + broadcast + no-cache như cũ
-                return HandleNotification(msg);
-            }
-            catch (JsonException)
-            {
-                return BadRequest(new { error = "JSON không hợp lệ." });
+                return HandleNotification(message);
             }
             catch (Exception ex)
             {
-                // Có thể log thêm tại đây
                 return Problem(detail: ex.Message);
             }
         }
-
 
         private IActionResult HandleNotification(NotificationMessage message)
         {
