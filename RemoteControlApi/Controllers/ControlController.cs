@@ -73,14 +73,14 @@ namespace RemoteControlApi.Controllers
 
 
 
-        [HttpPost("send-notification")]
+        [HttpPost("send-notification-json")]
         [Consumes("application/json")]
         public IActionResult SendNotificationJson([FromBody] NotificationMessage message)
         {
             return HandleNotification(message);
         }
 
-        [HttpPost("send-notification")]
+        [HttpPost("send-notification-form")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> SendNotificationForm([FromForm] NotificationMessage message, IFormFile? file)
         {

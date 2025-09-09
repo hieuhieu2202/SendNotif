@@ -21,7 +21,7 @@ Sau khi chạy ứng dụng, truy cập `http://localhost:5067/swagger` (hoặc 
 Ví dụ request gửi thông báo ở dạng JSON:
 
 ```
-POST http://localhost:5067/api/control/send-notification
+POST http://localhost:5067/api/control/send-notification-json
 Content-Type: application/json
 
 {
@@ -30,10 +30,11 @@ Content-Type: application/json
 }
 ```
 
-Để gửi kèm tệp, chuyển sang tab *form-data* và thêm các trường `title`, `body` cùng trường tệp `file`.
+Để gửi kèm tệp, gọi endpoint `send-notification-form`, chuyển sang tab *form-data* và thêm các trường `title`, `body` cùng trường tệp `file`.
 
 ## Các endpoint chính
-- `POST /api/control/send-notification` : gửi thông báo (JSON hoặc form-data).
+- `POST /api/control/send-notification-json` : gửi thông báo dạng JSON.
+- `POST /api/control/send-notification-form` : gửi thông báo kèm tệp (form-data).
 - `GET /api/control/get-notifications` : lấy danh sách thông báo.
 - `GET /api/control/notifications-stream` : stream thông báo (SSE).
 
