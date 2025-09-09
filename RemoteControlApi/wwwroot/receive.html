@@ -10,11 +10,22 @@
   <ul id="list"></ul>
   <script>
     const list = document.getElementById('list');
-    function add(n) {
-      const li = document.createElement('li');
-      li.textContent = `${n.title}: ${n.body}`;
-      list.prepend(li);
-    }
+      function add(n) {
+        if (n.message) n = n.message;
+        const li = document.createElement('li');
+        const title = n.title ?? n.Title ?? '';
+        const body = n.body ?? n.Body ?? '';
+        li.textContent = `${title}: ${body}`;
+        const url = n.fileUrl ?? n.FileUrl;
+        if (url) {
+          const link = document.createElement('a');
+          link.href = url;
+          link.textContent = ' (file)';
+          link.target = '_blank';
+          li.appendChild(link);
+        }
+        list.prepend(li);
+      }
     async function load() {
       const res = await fetch('/api/control/get-notifications');
       const json = await res.json();

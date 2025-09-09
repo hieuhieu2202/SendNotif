@@ -6,33 +6,36 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Send Notification</h1>
-  <form id="notifyForm">
-    <label>ID (optional)
-      <input id="id" name="id">
-    </label>
-    <label>Title
-      <input id="title" name="title" required>
-    </label>
-    <label>Body
-      <textarea id="body" name="body" required></textarea>
-    </label>
-    <button type="submit">Send</button>
-  </form>
+    <h1>Send Notification</h1>
+    <form id="notifyForm" enctype="multipart/form-data">
+      <label>ID (optional)
+        <input id="id" name="id">
+      </label>
+      <label>Title
+        <input id="title" name="title" required>
+      </label>
+      <label>Body
+        <textarea id="body" name="body" required></textarea>
+      </label>
+      <label>File
+        <input id="file" name="file" type="file">
+      </label>
+      <button type="submit">Send</button>
+    </form>
   <pre id="result"></pre>
   <script>
-    const form = document.getElementById('notifyForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const res = await fetch('/api/control/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: form.id.value, title: form.title.value, body: form.body.value })
+      const form = document.getElementById('notifyForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const res = await fetch('/api/control/send-notification', {
+          method: 'POST',
+          body: data
+        });
+        const json = await res.json();
+        document.getElementById('result').textContent = JSON.stringify(json, null, 2);
+        form.reset();
       });
-      const json = await res.json();
-      document.getElementById('result').textContent = JSON.stringify(json, null, 2);
-      form.reset();
-    });
   </script>
 </body>
 </html>

@@ -76,9 +76,40 @@ namespace RemoteControlApi.Controllers
         // ================== Notifications ==================
 
         [HttpPost("send-notification")]
+        [Consumes("application/json")]
         public IActionResult SendNotification([FromBody] NotificationMessage message)
+            => HandleNotification(message);
+
+        [HttpPost("send-notification")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> SendNotificationWithFile(
+            [FromForm] string? id,
+            [FromForm][Required, StringLength(120)] string title,
+            [FromForm][Required, StringLength(4000)] string body,
+            IFormFile? file)
         {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            var msg = new NotificationMessage
+            {
+                Id = id,
+                Title = title,
+                Body = body
+            };
+            if (file != null && file.Length > 0)
+            {
+                var uploads = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads");
+                Directory.CreateDirectory(uploads);
+                var fileName = Guid.NewGuid().ToString("n") + Path.GetExtension(file.FileName);
+                var fullPath = Path.Combine(uploads, fileName);
+                await using var fs = System.IO.File.Create(fullPath);
+                await file.CopyToAsync(fs);
+                msg.FileUrl = "/uploads/" + fileName;
+            }
+            return HandleNotification(msg);
+        }
+
+        private IActionResult HandleNotification(NotificationMessage message)
+        {
+            if (!TryValidateModel(message)) return ValidationProblem(ModelState);
             message.TimestampUtc = DateTimeOffset.UtcNow;
             message.Id = string.IsNullOrWhiteSpace(message.Id)
                 ? Guid.NewGuid().ToString("n")
@@ -301,6 +332,7 @@ namespace RemoteControlApi.Controllers
         [Required, StringLength(120)] public string Title { get; set; } = default!;
         [Required, StringLength(4000)] public string Body { get; set; } = default!;
         public DateTimeOffset TimestampUtc { get; set; }
+        public string? FileUrl { get; set; }
     }
 
     public class AppVersionInfo
