@@ -8,6 +8,9 @@
 <body>
   <h1>Send Notification</h1>
   <form id="notifyForm">
+    <label>ID (optional)
+      <input id="id" name="id">
+    </label>
     <label>Title
       <input id="title" name="title" required>
     </label>
@@ -24,7 +27,7 @@
       const res = await fetch('/api/control/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title.value, body: form.body.value })
+        body: JSON.stringify({ id: form.id.value, title: form.title.value, body: form.body.value })
       });
       const json = await res.json();
       document.getElementById('result').textContent = JSON.stringify(json, null, 2);

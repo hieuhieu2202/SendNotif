@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Net.Http.Headers;
@@ -21,6 +22,7 @@ namespace RemoteControlApi.Controllers
         // thread-safe queue cho thông báo
         private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
         private const int MaxNotifications = 1000;
+        private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
 
         // Thông tin version hiện tại (được nạp từ manifest)
         private static AppVersionInfo _appVersion = LoadManifestOrDefault();
@@ -83,6 +85,11 @@ namespace RemoteControlApi.Controllers
                 : message.Id;
             _notifications.Enqueue(message);
             while (_notifications.Count > MaxNotifications && _notifications.TryDequeue(out _)) { }
+            foreach (var pair in _streams.ToArray())
+            {
+                if (!pair.Value.Writer.TryWrite(message))
+                    _streams.TryRemove(pair.Key, out _);
+            }
             SetNoCache();
             return Ok(new { status = "Notification received", message });
         }
@@ -113,6 +120,30 @@ namespace RemoteControlApi.Controllers
             while (_notifications.TryDequeue(out _)) { }
             SetNoCache();
             return Ok(new { status = "Cleared" });
+        }
+
+        [HttpGet("notifications-stream")]
+        public async Task NotificationsStream(CancellationToken cancellationToken)
+        {
+            SetNoCache();
+            Response.Headers[HeaderNames.ContentType] = "text/event-stream";
+            var id = Guid.NewGuid();
+            var channel = Channel.CreateUnbounded<NotificationMessage>();
+            _streams[id] = channel;
+            try
+            {
+                await foreach (var msg in channel.Reader.ReadAllAsync(cancellationToken))
+                {
+                    var json = JsonSerializer.Serialize(msg);
+                    await Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+                    await Response.Body.FlushAsync(cancellationToken);
+                }
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                _streams.TryRemove(id, out _);
+            }
         }
 
         // ================== App Version – Metadata ==================
