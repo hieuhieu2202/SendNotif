@@ -22,7 +22,8 @@
           previewBtn.textContent = 'Preview';
           const downloadLink = document.createElement('a');
           downloadLink.href = url;
-          downloadLink.textContent = 'Download';
+          const lowerUrl = url.toLowerCase();
+          downloadLink.textContent = lowerUrl.endsWith('.apk') ? 'Install APK' : 'Download';
           downloadLink.download = '';
           downloadLink.target = '_blank';
           downloadLink.style.marginLeft = '8px';
