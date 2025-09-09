@@ -1,41 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Send Notification</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8" />
+    <title>Send Notification</title>
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            margin: 24px;
+        }
+
+        form {
+            display: grid;
+            gap: 10px;
+            max-width: 520px;
+        }
+
+        label {
+            display: grid;
+            gap: 4px;
+        }
+
+        input, textarea {
+            padding: 6px 8px;
+        }
+
+        button {
+            padding: 8px 12px;
+        }
+
+        pre {
+            background: #111;
+            color: #eee;
+            padding: 12px;
+            overflow: auto;
+        }
+    </style>
 </head>
 <body>
     <h1>Send Notification</h1>
     <form id="notifyForm" enctype="multipart/form-data">
-      <label>ID (optional)
-        <input id="id" name="id">
-      </label>
-      <label>Title
-        <input id="title" name="title" required>
-      </label>
-      <label>Body
-        <textarea id="body" name="body" required></textarea>
-      </label>
-      <label>File
-        <input id="file" name="file" type="file">
-      </label>
-      <button type="submit">Send</button>
+        <label>
+            ID (optional)
+            <input id="id" name="id" />
+        </label>
+        <label>
+            Title
+            <input id="title" name="title" required />
+        </label>
+        <label>
+            Body
+            <textarea id="body" name="body" required></textarea>
+        </label>
+        <label>
+            File
+            <input id="file" name="file" type="file" />
+        </label>
+        <button type="submit">Send</button>
     </form>
-  <pre id="result"></pre>
-  <script>
-      const form = document.getElementById('notifyForm');
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const data = new FormData(form);
-        const res = await fetch('/api/control/send-notification', {
-          method: 'POST',
-          body: data
+
+    <h3>Result</h3>
+    <pre id="result"></pre>
+
+    <script>
+        const urlFrom = (path) => new URL(path, window.location).toString();
+
+        const form = document.getElementById('notifyForm');
+        const result = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            result.textContent = 'Sending...';
+
+            try {
+                const data = new FormData(form);
+                const res = await fetch(urlFrom('api/control/send-notification'), {
+                    method: 'POST',
+                    body: data
+                });
+
+                let bodyText = await res.text();
+                try { bodyText = JSON.stringify(JSON.parse(bodyText), null, 2); } catch { }
+                result.textContent = `${res.status} ${res.statusText}\n\n${bodyText}`;
+
+                if (res.ok) form.reset();
+            } catch (err) {
+                result.textContent = 'Error: ' + (err?.message || err);
+            }
         });
-        const json = await res.json();
-        document.getElementById('result').textContent = JSON.stringify(json, null, 2);
-        form.reset();
-      });
-  </script>
+    </script>
 </body>
 </html>

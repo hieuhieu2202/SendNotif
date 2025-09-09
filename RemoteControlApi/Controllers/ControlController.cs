@@ -6,6 +6,7 @@ using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Net.Http.Headers;
+using static RemoteControlApi.Model.NotiModel;
 
 namespace RemoteControlApi.Controllers
 {
@@ -13,18 +14,15 @@ namespace RemoteControlApi.Controllers
     [Route("api/[controller]")]
     public class ControlController : ControllerBase
     {
-        // ================== Storage paths ==================
         private static readonly string StoreRoot =
             Path.Combine(AppContext.BaseDirectory, "Builds");
         private static readonly string ManifestPath =
             Path.Combine(StoreRoot, "manifest.json");
 
-        // thread-safe queue cho thông báo
         private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
         private const int MaxNotifications = 1000;
         private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
 
-        // Thông tin version hiện tại (được nạp từ manifest)
         private static AppVersionInfo _appVersion = LoadManifestOrDefault();
 
         private static AppVersionInfo LoadManifestOrDefault()
@@ -73,40 +71,87 @@ namespace RemoteControlApi.Controllers
             Response.Headers[HeaderNames.Expires] = "0";
         }
 
-        // ================== Notifications ==================
+
 
         [HttpPost("send-notification")]
-        [Consumes("application/json")]
-        public IActionResult SendNotification([FromBody] NotificationMessage message)
-            => HandleNotification(message);
+        [Consumes("application/json", "multipart/form-data")]
 
-        [HttpPost("send-notification")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> SendNotificationWithFile(
-            [FromForm] string? id,
-            [FromForm][Required, StringLength(120)] string title,
-            [FromForm][Required, StringLength(4000)] string body,
-            IFormFile? file)
+        public async Task<IActionResult> SendNotificationUnified()
         {
-            var msg = new NotificationMessage
+            try
             {
-                Id = id,
-                Title = title,
-                Body = body
-            };
-            if (file != null && file.Length > 0)
-            {
-                var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-                var uploads = Path.Combine(env.WebRootPath, "uploads");
-                Directory.CreateDirectory(uploads);
-                var fileName = Guid.NewGuid().ToString("n") + Path.GetExtension(file.FileName);
-                var fullPath = Path.Combine(uploads, fileName);
-                await using var fs = System.IO.File.Create(fullPath);
-                await file.CopyToAsync(fs);
-                msg.FileUrl = "/uploads/" + fileName;
+                NotificationMessage msg;
+
+                if (Request.HasFormContentType)
+                {
+                    // multipart/form-data (hoặc x-www-form-urlencoded)
+                    var form = await Request.ReadFormAsync();
+
+                    msg = new NotificationMessage
+                    {
+                        Id = string.IsNullOrWhiteSpace(form["id"]) ? null : form["id"].ToString(),
+                        Title = form["title"],
+                        Body = form["body"]
+                    };
+
+                    // file là tuỳ chọn
+                    var file = form.Files.GetFile("file");
+                    if (file is { Length: > 0 })
+                    {
+                        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                        var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+                        Directory.CreateDirectory(webrootPath);
+                        var uploads = Path.Combine(webrootPath, "uploads");
+                        Directory.CreateDirectory(uploads);
+
+                        var ext = Path.GetExtension(file.FileName);
+                        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+
+                        var fileName = $"{Guid.NewGuid():N}{ext}";
+                        var fullPath = Path.Combine(uploads, fileName);
+
+                        await using (var fs = System.IO.File.Create(fullPath))
+                        {
+                            await file.CopyToAsync(fs);
+                        }
+
+                        // thêm base path vào URL trả về
+                        var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
+                        // (Nếu muốn URL tuyệt đối thì dùng: $"{Request.Scheme}://{Request.Host}{basePath}/uploads/{fileName}")
+                        msg.FileUrl = $"{basePath}/uploads/{fileName}";
+
+                    }
+                }
+                else if (Request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    // application/json (đọc trực tiếp stream, không cần ReadToEnd)
+                    msg = await JsonSerializer.DeserializeAsync<NotificationMessage>(
+                              Request.Body,
+                              new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                          ) ?? new NotificationMessage();
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
+                    {
+                        error = "Unsupported Content-Type. Hãy dùng application/json hoặc multipart/form-data."
+                    });
+                }
+
+                // Validate + broadcast + no-cache như cũ
+                return HandleNotification(msg);
             }
-            return HandleNotification(msg);
+            catch (JsonException)
+            {
+                return BadRequest(new { error = "JSON không hợp lệ." });
+            }
+            catch (Exception ex)
+            {
+                // Có thể log thêm tại đây
+                return Problem(detail: ex.Message);
+            }
         }
+
 
         private IActionResult HandleNotification(NotificationMessage message)
         {
@@ -178,17 +223,12 @@ namespace RemoteControlApi.Controllers
             }
         }
 
-        // ================== App Version – Metadata ==================
-
-        /// Flutter gọi endpoint này để biết latest/minSupported/notes + hash/size
         [HttpGet("app-version")]
         public IActionResult GetAppVersion() { SetNoCache(); return Ok(_appVersion); }
 
-        // ================== App Version – Upload binary ==================
-        // multipart/form-data: fields (latest, minSupported, notesVi, notesEn, platform, build?) + file
-        // platform: "android" | "ios"
+
         [HttpPost("app-version/upload")]
-        [RequestSizeLimit(1_500_000_000)] // ~1.5GB, điều chỉnh tuỳ nhu cầu
+        [RequestSizeLimit(1_500_000_000)] 
         [DisableRequestSizeLimit]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadBuild(
@@ -265,9 +305,7 @@ namespace RemoteControlApi.Controllers
             });
         }
 
-        // ================== App Version – Download latest binary ==================
-        // Trả thẳng file (hỗ trợ Range resume)
-        // GET /api/control/app-version/download?platform=android
+
         [HttpGet("app-version/download")]
         public IActionResult DownloadLatest([FromQuery] string platform = "android")
         {
@@ -294,7 +332,6 @@ namespace RemoteControlApi.Controllers
             return result;
         }
 
-        // HEAD để lấy size/hash trước khi tải
         [HttpHead("app-version/download")]
         public IActionResult HeadLatest([FromQuery] string platform = "android")
         {
@@ -314,7 +351,6 @@ namespace RemoteControlApi.Controllers
             return Ok();
         }
 
-        // ================== Utils ==================
         private static string GetContentTypeByPlatform(string platform, string ext)
         {
             var provider = new FileExtensionContentTypeProvider();
@@ -325,35 +361,6 @@ namespace RemoteControlApi.Controllers
             return ct;
         }
     }
-
-    // ================== Models ==================
-    public class NotificationMessage
-    {
-        public string? Id { get; set; }
-        [Required, StringLength(120)] public string Title { get; set; } = default!;
-        [Required, StringLength(4000)] public string Body { get; set; } = default!;
-        public DateTimeOffset TimestampUtc { get; set; }
-        public string? FileUrl { get; set; }
-    }
-
-    public class AppVersionInfo
-    {
-        [Required] public string Latest { get; set; } = default!;
-        [Required] public string MinSupported { get; set; } = default!;
-        public string? NotesVi { get; set; }
-        public string? NotesEn { get; set; }
-        public int Build { get; set; }
-        public DateTimeOffset UpdatedAt { get; set; }
-        // "android" | "ios" -> file info
-        public Dictionary<string, AppFileInfo>? Files { get; set; }
-    }
-
-    public class AppFileInfo
-    {
-        public string? FileName { get; set; }
-        public string? RelativePath { get; set; }
-        public long SizeBytes { get; set; }
-        public string? Sha256 { get; set; }
-        public string? ContentType { get; set; }
-    }
 }
+
+    

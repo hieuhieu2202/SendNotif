@@ -1,80 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Notifications</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8" />
+    <title>Notifications</title>
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            margin: 24px;
+        }
+
+        ul {
+            padding-left: 18px;
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        .preview-container {
+            margin-top: 6px;
+        }
+
+        img, video, iframe {
+            max-width: 560px;
+            max-height: 340px;
+            display: block;
+        }
+    </style>
 </head>
 <body>
-  <h1>Notifications</h1>
-  <ul id="list"></ul>
-  <script>
-    const list = document.getElementById('list');
-      function add(n) {
-        if (n.message) n = n.message;
-        const li = document.createElement('li');
-        const title = n.title ?? n.Title ?? '';
-        const body = n.body ?? n.Body ?? '';
-        li.textContent = `${title}: ${body}`;
-        const url = n.fileUrl ?? n.FileUrl;
-        if (url) {
-          const previewBtn = document.createElement('button');
-          previewBtn.textContent = 'Preview';
-          const downloadLink = document.createElement('a');
-          downloadLink.href = url;
-          const lowerUrl = url.toLowerCase();
-          downloadLink.textContent = lowerUrl.endsWith('.apk') ? 'Install APK' : 'Download';
-          downloadLink.download = '';
-          downloadLink.target = '_blank';
-          downloadLink.style.marginLeft = '8px';
-          li.appendChild(previewBtn);
-          li.appendChild(downloadLink);
+    <h1>Notifications</h1>
+    <ul id="list"></ul>
 
-          const preview = document.createElement('div');
-          preview.className = 'preview-container';
-          preview.style.display = 'none';
-          li.appendChild(preview);
+    <script>
+        const list = document.getElementById('list');
 
-          previewBtn.addEventListener('click', () => {
-            if (preview.style.display === 'none') {
-              preview.innerHTML = '';
-              const lower = url.toLowerCase();
-              if (lower.match(/\.(png|jpe?g|gif|bmp|webp)$/)) {
-                const img = document.createElement('img');
-                img.src = url;
-                preview.appendChild(img);
-              } else if (lower.match(/\.(mp4|webm|ogg)$/)) {
-                const video = document.createElement('video');
-                video.src = url;
-                video.controls = true;
-                preview.appendChild(video);
-              } else if (lower.match(/\.(mp3|wav|ogg)$/)) {
-                const audio = document.createElement('audio');
-                audio.src = url;
-                audio.controls = true;
-                preview.appendChild(audio);
-              } else {
-                const frame = document.createElement('iframe');
-                frame.src = url;
-                preview.appendChild(frame);
-              }
-              preview.style.display = 'block';
-            } else {
-              preview.style.display = 'none';
+        // Luôn build URL dựa trên vị trí hiện tại (tự bao gồm /SendNoti nếu có)
+        const urlFrom = (path) => new URL(path, window.location).toString();
+
+        function add(n) {
+            if (n.message) n = n.message; // server đang bọc { status, message }
+            const li = document.createElement('li');
+
+            const title = n.title ?? n.Title ?? '';
+            const body = n.body ?? n.Body ?? '';
+            li.textContent = `${title}: ${body}`;
+
+            const url = n.fileUrl ?? n.FileUrl;
+            if (url) {
+                const previewBtn = document.createElement('button');
+                previewBtn.textContent = 'Preview';
+
+                const downloadLink = document.createElement('a');
+                downloadLink.href = urlFrom(url); // chuẩn hoá URL (kể cả trường hợp server trả bắt đầu bằng "/")
+                const lowerUrl = downloadLink.href.toLowerCase();
+                downloadLink.textContent = lowerUrl.endsWith('.apk') ? 'Install APK' : 'Download';
+                downloadLink.download = '';
+                downloadLink.target = '_blank';
+                downloadLink.style.marginLeft = '8px';
+
+                li.appendChild(previewBtn);
+                li.appendChild(downloadLink);
+
+                const preview = document.createElement('div');
+                preview.className = 'preview-container';
+                preview.style.display = 'none';
+                li.appendChild(preview);
+
+                previewBtn.addEventListener('click', () => {
+                    if (preview.style.display === 'none') {
+                        preview.innerHTML = '';
+                        const lower = lowerUrl;
+                        if (lower.match(/\.(png|jpe?g|gif|bmp|webp)$/)) {
+                            const img = document.createElement('img');
+                            img.src = downloadLink.href;
+                            preview.appendChild(img);
+                        } else if (lower.match(/\.(mp4|webm|ogg)$/)) {
+                            const video = document.createElement('video');
+                            video.src = downloadLink.href;
+                            video.controls = true;
+                            preview.appendChild(video);
+                        } else if (lower.match(/\.(mp3|wav|ogg)$/)) {
+                            const audio = document.createElement('audio');
+                            audio.src = downloadLink.href;
+                            audio.controls = true;
+                            preview.appendChild(audio);
+                        } else {
+                            const frame = document.createElement('iframe');
+                            frame.src = downloadLink.href;
+                            frame.width = 560;
+                            frame.height = 340;
+                            preview.appendChild(frame);
+                        }
+                        preview.style.display = 'block';
+                    } else {
+                        preview.style.display = 'none';
+                    }
+                });
             }
-          });
+
+            list.prepend(li);
         }
-        list.prepend(li);
-      }
-    async function load() {
-      const res = await fetch('/api/control/get-notifications');
-      const json = await res.json();
-      list.innerHTML = '';
-      json.items.forEach(add);
-    }
-    load();
-    const evt = new EventSource('/api/control/notifications-stream');
-    evt.onmessage = e => add(JSON.parse(e.data));
-  </script>
+
+        async function load() {
+            const res = await fetch(urlFrom('api/control/get-notifications'));
+            if (!res.ok) {
+                list.innerHTML = `<li>Load failed: ${res.status}</li>`;
+                return;
+            }
+            const json = await res.json();
+            list.innerHTML = '';
+            (json.items || []).forEach(add);
+        }
+
+        load();
+
+        // SSE phải dùng URL đúng base
+        const evt = new EventSource(urlFrom('api/control/notifications-stream'));
+        evt.onmessage = e => add(JSON.parse(e.data));
+        evt.onerror = () => {
+            // optional: auto-reconnect (EventSource tự reconnect mặc định)
+        };
+    </script>
 </body>
 </html>
