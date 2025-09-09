@@ -96,7 +96,8 @@ namespace RemoteControlApi.Controllers
             };
             if (file != null && file.Length > 0)
             {
-                var uploads = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads");
+                var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                var uploads = Path.Combine(env.WebRootPath, "uploads");
                 Directory.CreateDirectory(uploads);
                 var fileName = Guid.NewGuid().ToString("n") + Path.GetExtension(file.FileName);
                 var fullPath = Path.Combine(uploads, fileName);

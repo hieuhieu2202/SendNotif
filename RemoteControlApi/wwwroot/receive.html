@@ -18,11 +18,50 @@
         li.textContent = `${title}: ${body}`;
         const url = n.fileUrl ?? n.FileUrl;
         if (url) {
-          const link = document.createElement('a');
-          link.href = url;
-          link.textContent = ' (file)';
-          link.target = '_blank';
-          li.appendChild(link);
+          const previewBtn = document.createElement('button');
+          previewBtn.textContent = 'Preview';
+          const downloadLink = document.createElement('a');
+          downloadLink.href = url;
+          downloadLink.textContent = 'Download';
+          downloadLink.download = '';
+          downloadLink.target = '_blank';
+          downloadLink.style.marginLeft = '8px';
+          li.appendChild(previewBtn);
+          li.appendChild(downloadLink);
+
+          const preview = document.createElement('div');
+          preview.className = 'preview-container';
+          preview.style.display = 'none';
+          li.appendChild(preview);
+
+          previewBtn.addEventListener('click', () => {
+            if (preview.style.display === 'none') {
+              preview.innerHTML = '';
+              const lower = url.toLowerCase();
+              if (lower.match(/\.(png|jpe?g|gif|bmp|webp)$/)) {
+                const img = document.createElement('img');
+                img.src = url;
+                preview.appendChild(img);
+              } else if (lower.match(/\.(mp4|webm|ogg)$/)) {
+                const video = document.createElement('video');
+                video.src = url;
+                video.controls = true;
+                preview.appendChild(video);
+              } else if (lower.match(/\.(mp3|wav|ogg)$/)) {
+                const audio = document.createElement('audio');
+                audio.src = url;
+                audio.controls = true;
+                preview.appendChild(audio);
+              } else {
+                const frame = document.createElement('iframe');
+                frame.src = url;
+                preview.appendChild(frame);
+              }
+              preview.style.display = 'block';
+            } else {
+              preview.style.display = 'none';
+            }
+          });
         }
         list.prepend(li);
       }
