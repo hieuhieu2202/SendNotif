@@ -107,73 +107,58 @@ namespace RemoteControlApi.Controllers
         }
 
         [HttpPost("send-notification")]
-        public async Task<IActionResult> SendNotificationUnified()
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> SendNotificationForm([FromForm] SendNotificationFormData input)
         {
             try
             {
-                NotificationMessage msg;
-
-                if (Request.HasFormContentType)
+                var msg = new NotificationMessage
                 {
-                    // multipart/form-data (hoặc x-www-form-urlencoded)
-                    var form = await Request.ReadFormAsync();
+                    Id = string.IsNullOrWhiteSpace(input.Id) ? null : input.Id,
+                    Title = input.Title,
+                    Body = input.Body
+                };
 
-                    msg = new NotificationMessage
+                if (input.File is { Length: > 0 })
+                {
+                    var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+                    Directory.CreateDirectory(webrootPath);
+                    var uploads = Path.Combine(webrootPath, "uploads");
+                    Directory.CreateDirectory(uploads);
+
+                    var ext = Path.GetExtension(input.File.FileName);
+                    if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+
+                    var fileName = $"{Guid.NewGuid():N}{ext}";
+                    var fullPath = Path.Combine(uploads, fileName);
+
+                    await using (var fs = System.IO.File.Create(fullPath))
                     {
-                        Id = string.IsNullOrWhiteSpace(form["id"]) ? null : form["id"].ToString(),
-                        Title = form["title"].ToString(),
-                        Body = form["body"].ToString()
-                    };
-
-                    // file là tuỳ chọn
-                    var file = form.Files.GetFile("file");
-                    if (file is { Length: > 0 })
-                    {
-                        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-                        var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-                        Directory.CreateDirectory(webrootPath);
-                        var uploads = Path.Combine(webrootPath, "uploads");
-                        Directory.CreateDirectory(uploads);
-
-                        var ext = Path.GetExtension(file.FileName);
-                        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
-
-                        var fileName = $"{Guid.NewGuid():N}{ext}";
-                        var fullPath = Path.Combine(uploads, fileName);
-
-                        await using (var fs = System.IO.File.Create(fullPath))
-                        {
-                            await file.CopyToAsync(fs);
-                        }
-
-                        var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
-                        msg.FileBase64 = Convert.ToBase64String(bytes);
-                        msg.FileName = file.FileName;
-                        var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-                        msg.FileUrl = $"{basePath}/uploads/{fileName}";
+                        await input.File.CopyToAsync(fs);
                     }
-                }
-                else
-                {
-                    // JSON body
-                    using var reader = new StreamReader(Request.Body);
-                    var json = await reader.ReadToEndAsync();
-                    msg = JsonSerializer.Deserialize<NotificationMessage>(json)
-                          ?? throw new JsonException("Invalid JSON");
+
+                    var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+                    msg.FileBase64 = Convert.ToBase64String(bytes);
+                    msg.FileName = input.File.FileName;
+                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
+                    msg.FileUrl = $"{basePath}/uploads/{fileName}";
                 }
 
-                // Validate + broadcast + no-cache như cũ
                 return HandleNotification(msg);
-            }
-            catch (JsonException)
-            {
-                return BadRequest(new { error = "JSON không hợp lệ." });
             }
             catch (Exception ex)
             {
-                // Có thể log thêm tại đây
                 return Problem(detail: ex.Message);
             }
+        }
+
+        public class SendNotificationFormData
+        {
+            public string? Id { get; set; }
+            [Required] public string Title { get; set; } = default!;
+            [Required] public string Body { get; set; } = default!;
+            public IFormFile? File { get; set; }
         }
 
 

@@ -6,7 +6,7 @@ Accept: application/json
 ###
 
 ### Send notification (JSON)
-POST {{RemoteControlApi_HostAddress}}/api/control/send-notification
+POST {{RemoteControlApi_HostAddress}}/api/control/send-notification-json
 Content-Type: application/json
 
 {
@@ -15,4 +15,7 @@ Content-Type: application/json
   "fileName": "note.txt",
   "fileBase64": "SGVsbG8gd29ybGQ="
 }
+
+### Get notifications
+GET {{RemoteControlApi_HostAddress}}/api/control/get-notifications
 
