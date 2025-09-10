@@ -22,6 +22,7 @@ namespace RemoteControlApi.Controllers
         private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
         private const int MaxNotifications = 1000;
         private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
+        private static readonly ConcurrentDictionary<string, DateTimeOffset> _clientClearedUntil = new();
 
         private static AppVersionInfo _appVersion = LoadManifestOrDefault();
 
@@ -136,19 +137,27 @@ namespace RemoteControlApi.Controllers
         }
 
         [HttpGet("get-notifications")]
-        public IActionResult GetNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public IActionResult GetNotifications([
+            FromQuery][Required] string clientId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 200);
-            var items = _notifications.ToArray()
+            _clientClearedUntil.TryGetValue(clientId, out var clearedAt);
+            var snapshot = _notifications.ToArray();
+            var filtered = snapshot
+                .Where(n => n.TimestampUtc > clearedAt)
                 .OrderByDescending(x => x.TimestampUtc)
+                .ToList();
+            var items = filtered
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
             SetNoCache();
             return Ok(new
             {
-                total = _notifications.Count,
+                total = filtered.Count,
                 page,
                 pageSize,
                 items
@@ -156,9 +165,9 @@ namespace RemoteControlApi.Controllers
         }
 
         [HttpPost("clear-notifications")]
-        public IActionResult Clear()
+        public IActionResult Clear([FromQuery][Required] string clientId)
         {
-            while (_notifications.TryDequeue(out _)) { }
+            _clientClearedUntil[clientId] = DateTimeOffset.UtcNow;
             SetNoCache();
             return Ok(new { status = "Cleared" });
         }
