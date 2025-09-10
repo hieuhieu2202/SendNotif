@@ -4,3 +4,15 @@ GET {{RemoteControlApi_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### Send notification (JSON)
+POST {{RemoteControlApi_HostAddress}}/api/control/send-notification
+Content-Type: application/json
+
+{
+  "title": "Hello",
+  "body": "Test from http file",
+  "fileName": "note.txt",
+  "fileBase64": "SGVsbG8gd29ybGQ="
+}
+
