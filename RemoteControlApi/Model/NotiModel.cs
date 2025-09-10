@@ -11,6 +11,8 @@ namespace RemoteControlApi.Model
             [Required, StringLength(4000)] public string Body { get; set; } = default!;
             public DateTimeOffset TimestampUtc { get; set; }
             public string? FileUrl { get; set; }
+            public string? FileBase64 { get; set; }
+            public string? FileName { get; set; }
         }
 
         public class AppVersionInfo

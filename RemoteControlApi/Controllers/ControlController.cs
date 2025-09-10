@@ -73,8 +73,38 @@ namespace RemoteControlApi.Controllers
 
 
 
-        [HttpPost("send-notification")]
-        [Consumes("application/json", "multipart/form-data")]
+        [HttpPost("send-notification-json")]
+        [Consumes("application/json")]
+        public async Task<IActionResult> SendNotificationJson([FromBody] NotificationMessage message)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(message.FileBase64))
+                {
+                    var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+                    Directory.CreateDirectory(webrootPath);
+                    var uploads = Path.Combine(webrootPath, "uploads");
+                    Directory.CreateDirectory(uploads);
+
+                    var ext = Path.GetExtension(message.FileName);
+                    if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+                    var fileName = $"{Guid.NewGuid():N}{ext}";
+                    var fullPath = Path.Combine(uploads, fileName);
+                    var bytes = Convert.FromBase64String(message.FileBase64);
+                    await System.IO.File.WriteAllBytesAsync(fullPath, bytes);
+
+                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
+                    message.FileUrl = $"{basePath}/uploads/{fileName}";
+                }
+
+                return HandleNotification(message);
+            }
+            catch (Exception ex)
+            {
+                return Problem(detail: ex.Message);
+            }
+        }
 
         public async Task<IActionResult> SendNotificationUnified()
         {
@@ -110,32 +140,16 @@ namespace RemoteControlApi.Controllers
                         var fileName = $"{Guid.NewGuid():N}{ext}";
                         var fullPath = Path.Combine(uploads, fileName);
 
-                        await using (var fs = System.IO.File.Create(fullPath))
-                        {
-                            await file.CopyToAsync(fs);
-                        }
-
-                        // thêm base path vào URL trả về
-                        var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-                        // (Nếu muốn URL tuyệt đối thì dùng: $"{Request.Scheme}://{Request.Host}{basePath}/uploads/{fileName}")
-                        msg.FileUrl = $"{basePath}/uploads/{fileName}";
+                    await using (var fs = System.IO.File.Create(fullPath))
+                    {
+                        await file.CopyToAsync(fs);
 
                     }
-                }
-                else if (Request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    // application/json (đọc trực tiếp stream, không cần ReadToEnd)
-                    msg = await JsonSerializer.DeserializeAsync<NotificationMessage>(
-                              Request.Body,
-                              new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                          ) ?? new NotificationMessage();
-                }
-                else
-                {
-                    return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
-                    {
-                        error = "Unsupported Content-Type. Hãy dùng application/json hoặc multipart/form-data."
-                    });
+                    var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+                    message.FileBase64 = Convert.ToBase64String(bytes);
+                    message.FileName = file.FileName;
+                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
+                    message.FileUrl = $"{basePath}/uploads/{fileName}";
                 }
 
                 // Validate + broadcast + no-cache như cũ
