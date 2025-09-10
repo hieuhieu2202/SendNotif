@@ -106,6 +106,7 @@ namespace RemoteControlApi.Controllers
             }
         }
 
+        [HttpPost("send-notification")]
         public async Task<IActionResult> SendNotificationUnified()
         {
             try
@@ -120,8 +121,8 @@ namespace RemoteControlApi.Controllers
                     msg = new NotificationMessage
                     {
                         Id = string.IsNullOrWhiteSpace(form["id"]) ? null : form["id"].ToString(),
-                        Title = form["title"],
-                        Body = form["body"]
+                        Title = form["title"].ToString(),
+                        Body = form["body"].ToString()
                     };
 
                     // file là tuỳ chọn
@@ -140,16 +141,25 @@ namespace RemoteControlApi.Controllers
                         var fileName = $"{Guid.NewGuid():N}{ext}";
                         var fullPath = Path.Combine(uploads, fileName);
 
-                    await using (var fs = System.IO.File.Create(fullPath))
-                    {
-                        await file.CopyToAsync(fs);
+                        await using (var fs = System.IO.File.Create(fullPath))
+                        {
+                            await file.CopyToAsync(fs);
+                        }
 
+                        var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+                        msg.FileBase64 = Convert.ToBase64String(bytes);
+                        msg.FileName = file.FileName;
+                        var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
+                        msg.FileUrl = $"{basePath}/uploads/{fileName}";
                     }
-                    var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
-                    message.FileBase64 = Convert.ToBase64String(bytes);
-                    message.FileName = file.FileName;
-                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-                    message.FileUrl = $"{basePath}/uploads/{fileName}";
+                }
+                else
+                {
+                    // JSON body
+                    using var reader = new StreamReader(Request.Body);
+                    var json = await reader.ReadToEndAsync();
+                    msg = JsonSerializer.Deserialize<NotificationMessage>(json)
+                          ?? throw new JsonException("Invalid JSON");
                 }
 
                 // Validate + broadcast + no-cache như cũ
