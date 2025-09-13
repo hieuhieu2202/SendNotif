@@ -19,21 +19,22 @@ The application listens on `http://localhost:5067` by default.
 ## Swagger
 
 Open `http://localhost:5067/swagger` for interactive documentation.
-Use the `send-notification` operation for multipart uploads and `send-notification-json`
-for JSON. The `get-notifications` endpoint lists the latest notifications.
+Use the `POST /api/notifications` operation to send a notification. It accepts either
+`multipart/form-data` (with a `file` field) or pure JSON that includes `fileBase64` and
+`fileName`. `GET /api/notifications` lists the latest notifications.
 
 ## Postman / cURL
 
 Send a multipart request (form-data) with fields `id`, `title`, `body` and an optional `file`:
 
 ```
-POST http://localhost:5067/api/control/send-notification
+POST http://localhost:5067/api/notifications
 ```
 
 Or send JSON when you already have the file as Base64:
 
 ```
-POST http://localhost:5067/api/control/send-notification-json
+POST http://localhost:5067/api/notifications
 Content-Type: application/json
 
 {
@@ -48,7 +49,7 @@ Content-Type: application/json
 Retrieve messages:
 
 ```
-GET http://localhost:5067/api/control/get-notifications
+GET http://localhost:5067/api/notifications
 ```
 
 Responses include a `fileUrl` you can open to download or preview the uploaded file.
