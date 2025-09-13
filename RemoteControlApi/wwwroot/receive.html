@@ -46,6 +46,16 @@
             const body = n.body ?? n.Body ?? '';
             li.textContent = `${title}: ${body}`;
 
+            const linkPath = n.link ?? n.Link;
+            if (linkPath) {
+                const a = document.createElement('a');
+                a.href = urlFrom(linkPath);
+                a.textContent = linkPath;
+                a.target = '_blank';
+                li.appendChild(document.createElement('br'));
+                li.appendChild(a);
+            }
+
             const url = n.fileUrl ?? n.FileUrl;
             if (url) {
                 const previewBtn = document.createElement('button');

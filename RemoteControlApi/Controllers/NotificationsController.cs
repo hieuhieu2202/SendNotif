@@ -28,7 +28,8 @@ public class NotificationsController : ControllerBase
                 {
                     Id = form["id"],
                     Title = form["title"],
-                    Body = form["body"]
+                    Body = form["body"],
+                    Link = form["link"]
                 };
                 var file = form.Files["file"];
                 if (file != null && file.Length > 0)

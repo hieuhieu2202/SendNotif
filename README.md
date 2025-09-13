@@ -1,7 +1,8 @@
 RemoteControlApi
 =================
 
-This project exposes a notification API that accepts optional file attachments.
+This project exposes a notification API for sending notifications with optional
+links and file attachments.
 
 ## Run
 
@@ -13,8 +14,8 @@ The application listens on `http://localhost:5067` by default.
 
 ## Web Interface
 
-- `http://localhost:5067/send.html` – send a notification with an optional file.
-- `http://localhost:5067/receive.html` – view sent notifications and preview/download attachments.
+- `http://localhost:5067/send.html` – send a notification with an optional link and file.
+- `http://localhost:5067/receive.html` – view sent notifications, follow links, and preview/download attachments.
 
 ## Swagger
 
@@ -25,7 +26,7 @@ Use the `POST /api/notifications` operation to send a notification. It accepts e
 
 ## Postman / cURL
 
-Send a multipart request (form-data) with fields `id`, `title`, `body` and an optional `file`:
+Send a multipart request (form-data) with fields `id`, `title`, `body`, an optional `link`, and an optional `file`:
 
 ```
 POST http://localhost:5067/api/notifications
@@ -41,6 +42,7 @@ Content-Type: application/json
   "id": "123",
   "title": "Hello",
   "body": "Test message",
+  "link": "https://example.com",
   "fileName": "note.txt",
   "fileBase64": "SGVsbG8gd29ybGQ="
 }

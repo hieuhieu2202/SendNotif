@@ -12,6 +12,7 @@ Content-Type: application/json
 {
   "title": "Hello",
   "body": "Test from http file",
+  "link": "https://example.com",
   "fileName": "note.txt",
   "fileBase64": "SGVsbG8gd29ybGQ="
 }

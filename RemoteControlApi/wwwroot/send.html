@@ -52,6 +52,10 @@
             <textarea id="body" name="body" required></textarea>
         </label>
         <label>
+            Link
+            <input id="link" name="link" />
+        </label>
+        <label>
             File
             <input id="file" name="file" type="file" />
         </label>
@@ -91,6 +95,14 @@
                 preview.innerHTML = '';
                 if (res.ok) {
                     form.reset();
+                    const linkUrl = parsed?.message?.link;
+                    if (linkUrl) {
+                        const a = document.createElement('a');
+                        a.href = urlFrom(linkUrl);
+                        a.textContent = 'Open Link';
+                        a.target = '_blank';
+                        preview.appendChild(a);
+                    }
                     const url = parsed?.message?.fileUrl;
                     if (url) {
                         const link = document.createElement('a');

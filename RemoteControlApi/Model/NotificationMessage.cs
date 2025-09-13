@@ -12,6 +12,9 @@ public class NotificationMessage
     [Required, StringLength(4000)]
     public string Body { get; set; } = default!;
 
+    [StringLength(2048)]
+    public string? Link { get; set; }
+
     public DateTimeOffset TimestampUtc { get; set; }
     public string? FileUrl { get; set; }
     public string? FileBase64 { get; set; }
