@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,8 +36,15 @@ app.UseSwaggerUI(c =>
 });
 
 // Static files (uploads,…)
+var provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".apk"] = "application/vnd.android.package-archive";
+
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = provider,
+    ServeUnknownFileTypes = true
+});
 
 app.UseHttpsRedirection();
 
