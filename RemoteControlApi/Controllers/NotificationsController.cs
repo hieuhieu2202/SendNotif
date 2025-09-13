@@ -14,7 +14,7 @@ public class NotificationsController : ControllerBase
     private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
     private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
 
-    [HttpPost]
+    [HttpPost("form")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(1_500_000_000)]
     public async Task<IActionResult> SendForm([FromForm] SendNotificationFormData data)

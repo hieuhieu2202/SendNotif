@@ -81,7 +81,7 @@
 
             try {
                 const data = new FormData(form);
-                const res = await fetch(urlFrom('api/notifications'), {
+                const res = await fetch(urlFrom('api/notifications/form'), {
                     method: 'POST',
                     body: data
                 });

@@ -20,16 +20,17 @@ The application listens on `http://localhost:5067` by default.
 ## Swagger
 
 Open `http://localhost:5067/swagger` for interactive documentation.
-Use the `POST /api/notifications` operation to send a notification. It accepts either
-`multipart/form-data` (with a `file` field) or pure JSON that includes `fileBase64` and
-`fileName`. `GET /api/notifications` lists the latest notifications.
+Use the `POST /api/notifications/form` operation to send a notification with
+`multipart/form-data` (including an optional `file` field). To send a JSON payload
+with Base64 data, call `POST /api/notifications`. `GET /api/notifications` lists the
+latest notifications.
 
 ## Postman / cURL
 
 Send a multipart request (form-data) with fields `id`, `title`, `body`, an optional `link`, and an optional `file`:
 
 ```
-POST http://localhost:5067/api/notifications
+POST http://localhost:5067/api/notifications/form
 ```
 
 Or send JSON when you already have the file as Base64:
