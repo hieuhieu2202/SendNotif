@@ -15,35 +15,41 @@ public class NotificationsController : ControllerBase
     private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [RequestSizeLimit(1_500_000_000)]
-    public async Task<IActionResult> Send()
+    public async Task<IActionResult> SendForm([FromForm] SendNotificationFormData data)
     {
         try
         {
-            NotificationMessage msg;
-            if (Request.HasFormContentType)
+            var msg = new NotificationMessage
             {
-                var form = await Request.ReadFormAsync();
-                msg = new NotificationMessage
-                {
-                    Id = form["id"],
-                    Title = form["title"],
-                    Body = form["body"],
-                    Link = form["link"]
-                };
-                var file = form.Files["file"];
-                if (file != null && file.Length > 0)
-                {
-                    await SaveFormFile(file, msg);
-                }
+                Id = data.Id,
+                Title = data.Title,
+                Body = data.Body,
+                Link = data.Link
+            };
+            if (data.File != null && data.File.Length > 0)
+            {
+                await SaveFormFile(data.File, msg);
             }
-            else
+            return Handle(msg);
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message);
+        }
+    }
+
+    [HttpPost]
+    [Consumes("application/json")]
+    [RequestSizeLimit(1_500_000_000)]
+    public async Task<IActionResult> SendJson([FromBody] NotificationMessage msg)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(msg.FileBase64) && !string.IsNullOrWhiteSpace(msg.FileName))
             {
-                msg = await Request.ReadFromJsonAsync<NotificationMessage>() ?? new NotificationMessage();
-                if (!string.IsNullOrWhiteSpace(msg.FileBase64) && !string.IsNullOrWhiteSpace(msg.FileName))
-                {
-                    await SaveBase64(msg);
-                }
+                await SaveBase64(msg);
             }
             return Handle(msg);
         }
