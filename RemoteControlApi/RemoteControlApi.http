@@ -1,7 +1,7 @@
 @RemoteControlApi_HostAddress = http://localhost:5067
 
 ### Send notification (JSON)
-POST {{RemoteControlApi_HostAddress}}/api/notifications
+POST {{RemoteControlApi_HostAddress}}/api/Control/send-notification-json
 Content-Type: application/json
 
 {
@@ -14,7 +14,7 @@ Content-Type: application/json
 }
 
 ### Send notification (multipart form-data)
-POST {{RemoteControlApi_HostAddress}}/api/notifications/form
+POST {{RemoteControlApi_HostAddress}}/api/Control/send-notification
 Content-Type: multipart/form-data; boundary=MyBoundary
 
 --MyBoundary
@@ -37,25 +37,34 @@ Content-Type: text/plain
 --MyBoundary--
 
 ### Get notifications
-GET {{RemoteControlApi_HostAddress}}/api/notifications
+GET {{RemoteControlApi_HostAddress}}/api/Control/get-notifications
 
 ### Clear notifications
-POST {{RemoteControlApi_HostAddress}}/api/notifications/clear
+POST {{RemoteControlApi_HostAddress}}/api/Control/clear-notifications
 
 ### Stream notifications (SSE)
-GET {{RemoteControlApi_HostAddress}}/api/notifications/stream
+GET {{RemoteControlApi_HostAddress}}/api/Control/notifications-stream
 
-### Report device version
-POST {{RemoteControlApi_HostAddress}}/api/devices/device123/version
-Content-Type: application/json
+### Get app version info
+GET {{RemoteControlApi_HostAddress}}/api/Control/app-version
 
-{
-  "version": "1.0.0",
-  "cardCode": "CARD123"
-}
+### Upload new app version
+POST {{RemoteControlApi_HostAddress}}/api/Control/app-version/upload
+Content-Type: multipart/form-data; boundary=MyBoundary
 
-### Fetch pending notifications for device
-GET {{RemoteControlApi_HostAddress}}/api/devices/device123/notifications
+--MyBoundary
+Content-Disposition: form-data; name="version"
 
-### Mark notification as read
-POST {{RemoteControlApi_HostAddress}}/api/devices/device123/notifications/{notificationId}/read
+1.2.3
+--MyBoundary
+Content-Disposition: form-data; name="file"; filename="app.apk"
+Content-Type: application/octet-stream
+
+< app.apk
+--MyBoundary--
+
+### Download app version
+GET {{RemoteControlApi_HostAddress}}/api/Control/app-version/download
+
+### Check app version metadata
+HEAD {{RemoteControlApi_HostAddress}}/api/Control/app-version/download

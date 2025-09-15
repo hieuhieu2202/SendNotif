@@ -114,7 +114,7 @@
         }
 
         async function load() {
-            const res = await fetch(urlFrom('api/notifications'));
+            const res = await fetch(urlFrom('api/Control/get-notifications'));
             if (!res.ok) {
                 list.innerHTML = `<li>Load failed: ${res.status}</li>`;
                 return;
@@ -127,7 +127,7 @@
         load();
 
         // SSE phải dùng URL đúng base
-        const evt = new EventSource(urlFrom('api/notifications/stream'));
+        const evt = new EventSource(urlFrom('api/Control/notifications-stream'));
         evt.onmessage = e => add(JSON.parse(e.data));
         evt.onerror = () => {
             // optional: auto-reconnect (EventSource tự reconnect mặc định)
