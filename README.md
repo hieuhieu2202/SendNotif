@@ -7,6 +7,10 @@ clients can retrieve missed messages even after server restarts. The connection
 string lives under `ConnectionStrings:Notifications` in `appsettings.json` and
 defaults to LocalDB.
 
+> **Note:** LocalDB is available only on Windows. On Linux or in production, set
+> `ConnectionStrings:Notifications` to a reachable SQL Server instance (for
+> example: `Server=localhost;Database=NotificationDb;User Id=sa;Password=Pass@word;TrustServerCertificate=True`).
+
 ## Run
 
 ```bash
