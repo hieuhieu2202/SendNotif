@@ -22,12 +22,14 @@ public class DevicesController : ControllerBase
         var device = await _db.Devices.FindAsync(id);
         if (device == null)
         {
-            device = new Device { DeviceId = id, CurrentVersion = dto.Version, LastSeen = DateTimeOffset.UtcNow };
+            device = new Device { DeviceId = id, CurrentVersion = dto.Version, LastSeen = DateTimeOffset.UtcNow, CardCode = dto.CardCode, UserName = dto.UserName };
             _db.Devices.Add(device);
         }
         else
         {
             device.CurrentVersion = dto.Version;
+            device.CardCode = dto.CardCode ?? device.CardCode;
+            device.UserName = dto.UserName ?? device.UserName;
             device.LastSeen = DateTimeOffset.UtcNow;
         }
         await _db.SaveChangesAsync();
@@ -72,8 +74,41 @@ public class DevicesController : ControllerBase
         return Ok(pending);
     }
 
+    [HttpPost("{deviceId}/notifications/{notificationId}/read")]
+    public async Task<IActionResult> MarkRead(string deviceId, string notificationId)
+    {
+        var device = await _db.Devices.FindAsync(deviceId);
+        if (device == null) return NotFound(new { error = "Device not found" });
+
+        var now = DateTimeOffset.UtcNow;
+        device.LastSeen = now;
+
+        var entry = await _db.DeviceNotifications.FindAsync(deviceId, notificationId);
+        if (entry == null)
+        {
+            entry = new DeviceNotification
+            {
+                DeviceId = deviceId,
+                NotificationId = notificationId,
+                Status = "Read",
+                ReadAt = now
+            };
+            _db.DeviceNotifications.Add(entry);
+        }
+        else
+        {
+            entry.Status = "Read";
+            entry.ReadAt = now;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { status = "read", readAt = entry.ReadAt, cardCode = device.CardCode, userName = device.UserName });
+    }
+
     public class DeviceVersionDto
     {
         public string Version { get; set; } = string.Empty;
+        public string? CardCode { get; set; }
+        public string? UserName { get; set; }
     }
 }

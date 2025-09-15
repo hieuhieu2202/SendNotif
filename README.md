@@ -38,9 +38,10 @@ latest notifications (the server retains only the most recent 20).
 
 Device endpoints:
 
-- `POST /api/devices/{id}/version` – report a device's current app version.
+- `POST /api/devices/{id}/version` – report a device's current app version and optional card/user information.
 - `GET /api/devices/{id}/notifications` – fetch notifications the device hasn't
   received yet.
+- `POST /api/devices/{id}/notifications/{notificationId}/read` – mark a notification as read; updates the device's `LastSeen` and returns stored card/user details.
 
 ## API Endpoints
 
@@ -51,8 +52,9 @@ Device endpoints:
 | `GET` | `/api/notifications` | List stored notifications (most recent first, capped at 20). |
 | `POST` | `/api/notifications/clear` | Remove all stored notifications and delivery records. |
 | `GET` | `/api/notifications/stream` | Stream new notifications in real time using Server-Sent Events. |
-| `POST` | `/api/devices/{id}/version` | Report the current version of a device. |
+| `POST` | `/api/devices/{id}/version` | Report the current version of a device along with optional `cardCode`/`userName`. |
 | `GET` | `/api/devices/{id}/notifications` | Fetch notifications a device has not yet received. |
+| `POST` | `/api/devices/{id}/notifications/{notificationId}/read` | Mark a notification as read and update the device's last-seen timestamp. |
 | `GET` | `/uploads/{filename}` | Download an uploaded file (URL returned in notification). |
 
 ## Postman / cURL
@@ -87,6 +89,21 @@ GET http://localhost:5067/api/notifications
 ```
 
 Responses include a `fileUrl` you can open to download or preview the uploaded file.
+
+Report device details:
+
+```
+POST http://localhost:5067/api/devices/device123/version
+Content-Type: application/json
+
+{
+  "version": "1.0.0",
+  "cardCode": "CARD123",
+  "userName": "alice"
+}
+
+POST http://localhost:5067/api/devices/device123/notifications/{notificationId}/read
+```
 
 SQL Server DDL for the backing tables is available in `sql/create_tables.sql`.
 

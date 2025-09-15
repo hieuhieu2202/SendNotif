@@ -50,8 +50,13 @@ POST {{RemoteControlApi_HostAddress}}/api/devices/device123/version
 Content-Type: application/json
 
 {
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "cardCode": "CARD123",
+  "userName": "alice"
 }
 
 ### Fetch pending notifications for device
 GET {{RemoteControlApi_HostAddress}}/api/devices/device123/notifications
+
+### Mark notification as read
+POST {{RemoteControlApi_HostAddress}}/api/devices/device123/notifications/{notificationId}/read

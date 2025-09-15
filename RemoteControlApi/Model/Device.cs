@@ -8,6 +8,12 @@ public class Device
     [StringLength(100)]
     public string DeviceId { get; set; } = default!;
 
+    [StringLength(100)]
+    public string? CardCode { get; set; }
+
+    [StringLength(100)]
+    public string? UserName { get; set; }
+
     [StringLength(50)]
     public string? CurrentVersion { get; set; }
 
