@@ -2,10 +2,10 @@ RemoteControlApi
 =================
 
 This project exposes a notification API for sending notifications with optional
-links and file attachments. Notifications are stored in a SQLite database so
-clients can retrieve missed messages even after server restarts. The database
-file is persisted on disk at `data/notifications.db`, allowing you to inspect
-it directly on the server.
+links and file attachments. Notifications are stored in a SQL Server database so
+clients can retrieve missed messages even after server restarts. The connection
+string lives under `ConnectionStrings:Notifications` in `appsettings.json` and
+defaults to LocalDB.
 
 ## Run
 
@@ -66,5 +66,5 @@ GET http://localhost:5067/api/notifications
 
 Responses include a `fileUrl` you can open to download or preview the uploaded file.
 
-SQL schema for the backing tables is available in `sql/create_tables.sql`.
+SQL Server DDL for the backing tables is available in `sql/create_tables.sql`.
 

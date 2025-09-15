@@ -1,21 +1,19 @@
-﻿using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using RemoteControlApi.Data;
-using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// Store the SQLite database on disk so it can be inspected directly
-var dataDir = Path.Combine(builder.Environment.ContentRootPath, "data");
-Directory.CreateDirectory(dataDir);
-var dbPath = Path.Combine(dataDir, "notifications.db");
+// Configure SQL Server for persistence
+var connectionString = builder.Configuration.GetConnectionString("Notifications")
+    ?? "Server=(localdb)\\MSSQLLocalDB;Database=NotificationDb;Trusted_Connection=True;";
 
 builder.Services.AddDbContext<NotificationDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseSqlServer(connectionString));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -76,3 +74,4 @@ app.MapGet("/", ctx =>
 });
 
 app.Run();
+

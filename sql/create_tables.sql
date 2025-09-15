@@ -1,28 +1,30 @@
--- SQL schema for notifications system
-CREATE TABLE IF NOT EXISTS Notifications (
-    Id TEXT PRIMARY KEY,
-    Title TEXT NOT NULL,
-    Body TEXT NOT NULL,
-    Link TEXT,
-    FileName TEXT,
-    FileUrl TEXT,
-    FileBase64 TEXT,
-    TargetVersion TEXT,
-    TimestampUtc TEXT NOT NULL
+-- SQL Server schema for notifications system
+
+CREATE TABLE Notifications (
+    Id UNIQUEIDENTIFIER PRIMARY KEY,
+    Title NVARCHAR(200) NOT NULL,
+    Body NVARCHAR(MAX) NOT NULL,
+    Link NVARCHAR(500) NULL,
+    FileName NVARCHAR(260) NULL,
+    FileUrl NVARCHAR(2048) NULL,
+    FileBase64 NVARCHAR(MAX) NULL,
+    TargetVersion NVARCHAR(50) NULL,
+    TimestampUtc DATETIME2 NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Devices (
-    DeviceId TEXT PRIMARY KEY,
-    CurrentVersion TEXT,
-    LastSeen TEXT NOT NULL
+CREATE TABLE Devices (
+    DeviceId NVARCHAR(100) PRIMARY KEY,
+    CurrentVersion NVARCHAR(50) NULL,
+    LastSeen DATETIME2 NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS DeviceNotifications (
-    DeviceId TEXT NOT NULL,
-    NotificationId TEXT NOT NULL,
-    Status TEXT NOT NULL,
-    ReadAt TEXT,
+CREATE TABLE DeviceNotifications (
+    DeviceId NVARCHAR(100) NOT NULL,
+    NotificationId UNIQUEIDENTIFIER NOT NULL,
+    Status NVARCHAR(50) NOT NULL,
+    ReadAt DATETIME2 NULL,
     PRIMARY KEY (DeviceId, NotificationId),
     FOREIGN KEY (DeviceId) REFERENCES Devices(DeviceId) ON DELETE CASCADE,
     FOREIGN KEY (NotificationId) REFERENCES Notifications(Id) ON DELETE CASCADE
 );
+
