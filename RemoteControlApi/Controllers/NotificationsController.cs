@@ -33,7 +33,8 @@ public class NotificationsController : ControllerBase
                 Id = data.Id,
                 Title = data.Title,
                 Body = data.Body,
-                Link = data.Link
+                Link = data.Link,
+                TargetVersion = data.TargetVersion
             };
             if (data.File != null && data.File.Length > 0)
             {

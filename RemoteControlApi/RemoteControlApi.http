@@ -8,6 +8,7 @@ Content-Type: application/json
   "title": "Hello",
   "body": "Test from http file",
   "link": "https://example.com",
+  "targetVersion": "1.2.3",
   "fileName": "note.txt",
   "fileBase64": "SGVsbG8gd29ybGQ="
 }
@@ -24,6 +25,10 @@ Hello from multipart
 Content-Disposition: form-data; name="body"
 
 Message body
+--MyBoundary
+Content-Disposition: form-data; name="targetVersion"
+
+1.2.3
 --MyBoundary
 Content-Disposition: form-data; name="file"; filename="note.txt"
 Content-Type: text/plain

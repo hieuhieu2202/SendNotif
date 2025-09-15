@@ -16,5 +16,8 @@ public class SendNotificationFormData
     [StringLength(2048)]
     public string? Link { get; set; }
 
+    [StringLength(50)]
+    public string? TargetVersion { get; set; }
+
     public IFormFile? File { get; set; }
 }

@@ -44,7 +44,8 @@
 
             const title = n.title ?? n.Title ?? '';
             const body = n.body ?? n.Body ?? '';
-            li.textContent = `${title}: ${body}`;
+            const targetVersion = n.targetVersion ?? n.TargetVersion;
+            li.textContent = targetVersion ? `[${targetVersion}] ${title}: ${body}` : `${title}: ${body}`;
 
             const linkPath = n.link ?? n.Link;
             if (linkPath) {

@@ -2,7 +2,7 @@ RemoteControlApi
 =================
 
 This project exposes a notification API for sending notifications with optional
-links and file attachments. Notifications are stored in a SQL Server database so
+links, file attachments, and a target version. Notifications are stored in a SQL Server database so
 clients can retrieve missed messages even after server restarts. The connection
 string lives under `ConnectionStrings:Notifications` in `appsettings.json` and
 defaults to LocalDB.
@@ -25,7 +25,7 @@ database.
 
 ## Web Interface
 
-- `http://localhost:5067/send.html` – send a notification with an optional link and file.
+- `http://localhost:5067/send.html` – send a notification with an optional link, target version, and file.
 - `http://localhost:5067/receive.html` – view sent notifications, follow links, and preview/download attachments.
 
 ## Swagger
@@ -46,8 +46,8 @@ Device endpoints:
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `POST` | `/api/notifications` | Send a notification as JSON with optional Base64 file data. |
-| `POST` | `/api/notifications/form` | Send a notification via multipart form-data with an optional file. |
+| `POST` | `/api/notifications` | Send a notification as JSON with optional Base64 file data and `targetVersion`. |
+| `POST` | `/api/notifications/form` | Send a notification via multipart form-data with optional `targetVersion` and file. |
 | `GET` | `/api/notifications` | List stored notifications (most recent first, capped at 20). |
 | `POST` | `/api/notifications/clear` | Remove all stored notifications and delivery records. |
 | `GET` | `/api/notifications/stream` | Stream new notifications in real time using Server-Sent Events. |
@@ -57,7 +57,7 @@ Device endpoints:
 
 ## Postman / cURL
 
-Send a multipart request (form-data) with fields `id`, `title`, `body`, an optional `link`, and an optional `file`:
+Send a multipart request (form-data) with fields `id`, `title`, `body`, optional `link`, optional `targetVersion`, and an optional `file`:
 
 ```
 POST http://localhost:5067/api/notifications/form
@@ -74,6 +74,7 @@ Content-Type: application/json
   "title": "Hello",
   "body": "Test message",
   "link": "https://example.com",
+  "targetVersion": "1.2.3",
   "fileName": "note.txt",
   "fileBase64": "SGVsbG8gd29ybGQ="
 }
