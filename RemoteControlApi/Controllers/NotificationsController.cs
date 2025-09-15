@@ -10,7 +10,7 @@ namespace RemoteControlApi.Controllers;
 [Route("api/[controller]")]
 public class NotificationsController : ControllerBase
 {
-    private const int MaxNotifications = 1000;
+    private const int MaxNotifications = 20;
     private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
     private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
 

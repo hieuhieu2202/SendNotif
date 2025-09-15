@@ -23,7 +23,7 @@ Open `http://localhost:5067/swagger` for interactive documentation.
 Use the `POST /api/notifications/form` operation to send a notification with
 `multipart/form-data` (including an optional `file` field). To send a JSON payload
 with Base64 data, call `POST /api/notifications`. `GET /api/notifications` lists the
-latest notifications.
+latest notifications (the server retains only the most recent 20).
 
 ## Postman / cURL
 
