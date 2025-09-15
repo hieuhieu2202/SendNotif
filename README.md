@@ -3,7 +3,9 @@ RemoteControlApi
 
 This project exposes a notification API for sending notifications with optional
 links and file attachments. Notifications are stored in a SQLite database so
-clients can retrieve missed messages even after server restarts.
+clients can retrieve missed messages even after server restarts. The database
+file is persisted on disk at `data/notifications.db`, allowing you to inspect
+it directly on the server.
 
 ## Run
 
