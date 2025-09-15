@@ -1,10 +1,14 @@
 ﻿using Microsoft.AspNetCore.Http.Features;
-using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using RemoteControlApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddDbContext<NotificationDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -16,6 +20,12 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.Configure<FormOptions>(o => { o.MultipartBodyLengthLimit = 1_500_000_000; });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+    db.Database.EnsureCreated();
+}
 
 // Bật Swagger cả Prod và set server URL theo request (tôn trọng PathBase)
 app.UseSwagger(c =>

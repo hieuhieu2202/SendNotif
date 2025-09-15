@@ -2,7 +2,8 @@ RemoteControlApi
 =================
 
 This project exposes a notification API for sending notifications with optional
-links and file attachments.
+links and file attachments. Notifications are stored in a SQLite database so
+clients can retrieve missed messages even after server restarts.
 
 ## Run
 
@@ -24,6 +25,12 @@ Use the `POST /api/notifications/form` operation to send a notification with
 `multipart/form-data` (including an optional `file` field). To send a JSON payload
 with Base64 data, call `POST /api/notifications`. `GET /api/notifications` lists the
 latest notifications (the server retains only the most recent 20).
+
+Device endpoints:
+
+- `POST /api/devices/{id}/version` – report a device's current app version.
+- `GET /api/devices/{id}/notifications` – fetch notifications the device hasn't
+  received yet.
 
 ## Postman / cURL
 
@@ -56,4 +63,6 @@ GET http://localhost:5067/api/notifications
 ```
 
 Responses include a `fileUrl` you can open to download or preview the uploaded file.
+
+SQL schema for the backing tables is available in `sql/create_tables.sql`.
 

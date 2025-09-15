@@ -20,3 +20,14 @@ Content-Type: application/json
 ### Get notifications
 GET {{RemoteControlApi_HostAddress}}/api/notifications
 
+### Report device version
+POST {{RemoteControlApi_HostAddress}}/api/devices/device123/version
+Content-Type: application/json
+
+{
+  "version": "1.0.0"
+}
+
+### Fetch pending notifications for device
+GET {{RemoteControlApi_HostAddress}}/api/devices/device123/notifications
+

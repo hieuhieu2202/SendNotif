@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
+using RemoteControlApi.Data;
 using RemoteControlApi.Model;
 
 namespace RemoteControlApi.Controllers;
@@ -11,8 +13,13 @@ namespace RemoteControlApi.Controllers;
 public class NotificationsController : ControllerBase
 {
     private const int MaxNotifications = 20;
-    private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
     private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
+    private readonly NotificationDbContext _db;
+
+    public NotificationsController(NotificationDbContext db)
+    {
+        _db = db;
+    }
 
     [HttpPost("form")]
     [Consumes("multipart/form-data")]
@@ -102,19 +109,21 @@ public class NotificationsController : ControllerBase
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 200);
-        var items = _notifications.ToArray()
+        var items = _db.Notifications
             .OrderByDescending(x => x.TimestampUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();
         SetNoCache();
-        return Ok(new { total = _notifications.Count, page, pageSize, items });
+        return Ok(new { total = _db.Notifications.Count(), page, pageSize, items });
     }
 
     [HttpPost("clear")]
     public IActionResult Clear()
     {
-        while (_notifications.TryDequeue(out _)) { }
+        _db.DeviceNotifications.RemoveRange(_db.DeviceNotifications);
+        _db.Notifications.RemoveRange(_db.Notifications);
+        _db.SaveChanges();
         SetNoCache();
         return Ok(new { status = "Cleared" });
     }
@@ -148,8 +157,20 @@ public class NotificationsController : ControllerBase
         if (!TryValidateModel(msg)) return ValidationProblem(ModelState);
         msg.TimestampUtc = DateTimeOffset.UtcNow;
         msg.Id = string.IsNullOrWhiteSpace(msg.Id) ? Guid.NewGuid().ToString("n") : msg.Id;
-        _notifications.Enqueue(msg);
-        while (_notifications.Count > MaxNotifications && _notifications.TryDequeue(out _)) { }
+        _db.Notifications.Add(msg);
+        _db.SaveChanges();
+
+        // trim to MaxNotifications
+        var excess = _db.Notifications
+            .OrderByDescending(n => n.TimestampUtc)
+            .Skip(MaxNotifications)
+            .ToList();
+        if (excess.Count > 0)
+        {
+            _db.Notifications.RemoveRange(excess);
+            _db.SaveChanges();
+        }
+
         foreach (var pair in _streams.ToArray())
         {
             if (!pair.Value.Writer.TryWrite(msg))
