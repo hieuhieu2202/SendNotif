@@ -15,6 +15,10 @@ dotnet run --project RemoteControlApi
 
 The application listens on `http://localhost:5067` by default.
 
+On startup, the API applies any pending Entity Framework Core migrations so the
+necessary tables are created automatically in the configured SQL Server
+database.
+
 ## Web Interface
 
 - `http://localhost:5067/send.html` – send a notification with an optional link and file.
