@@ -10,7 +10,7 @@ builder.Services.AddControllers();
 
 // Configure SQL Server for persistence
 var connectionString = builder.Configuration.GetConnectionString("Notifications")
-    ?? "Server=(localdb)\\MSSQLLocalDB;Database=NotificationDb;Trusted_Connection=True;";
+    ?? "Data Source=10.220.130.125,1453;Initial Catalog=SendNoti;User ID=MBD-AIOT;Password=123456ad!;Trust Server Certificate=True";
 
 builder.Services.AddDbContext<NotificationDbContext>(options =>
     options.UseSqlServer(connectionString));
