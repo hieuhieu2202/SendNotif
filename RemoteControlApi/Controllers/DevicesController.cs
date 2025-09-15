@@ -22,14 +22,13 @@ public class DevicesController : ControllerBase
         var device = await _db.Devices.FindAsync(id);
         if (device == null)
         {
-            device = new Device { DeviceId = id, CurrentVersion = dto.Version, LastSeen = DateTimeOffset.UtcNow, CardCode = dto.CardCode, UserName = dto.UserName };
+            device = new Device { DeviceId = id, CurrentVersion = dto.Version, LastSeen = DateTimeOffset.UtcNow, CardCode = dto.CardCode };
             _db.Devices.Add(device);
         }
         else
         {
             device.CurrentVersion = dto.Version;
             device.CardCode = dto.CardCode ?? device.CardCode;
-            device.UserName = dto.UserName ?? device.UserName;
             device.LastSeen = DateTimeOffset.UtcNow;
         }
         await _db.SaveChangesAsync();
@@ -102,13 +101,12 @@ public class DevicesController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        return Ok(new { status = "read", readAt = entry.ReadAt, cardCode = device.CardCode, userName = device.UserName });
+        return Ok(new { status = "read", readAt = entry.ReadAt, cardCode = device.CardCode, version = device.CurrentVersion });
     }
 
     public class DeviceVersionDto
     {
         public string Version { get; set; } = string.Empty;
         public string? CardCode { get; set; }
-        public string? UserName { get; set; }
     }
 }

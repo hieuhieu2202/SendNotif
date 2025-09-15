@@ -15,7 +15,6 @@ CREATE TABLE Notifications (
 CREATE TABLE Devices (
     DeviceId NVARCHAR(100) PRIMARY KEY,
     CardCode NVARCHAR(100) NULL,
-    UserName NVARCHAR(100) NULL,
     CurrentVersion NVARCHAR(50) NULL,
     LastSeen DATETIME2 NOT NULL
 );

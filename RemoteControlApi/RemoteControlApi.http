@@ -51,8 +51,7 @@ Content-Type: application/json
 
 {
   "version": "1.0.0",
-  "cardCode": "CARD123",
-  "userName": "alice"
+  "cardCode": "CARD123"
 }
 
 ### Fetch pending notifications for device
