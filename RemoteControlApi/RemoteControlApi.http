@@ -1,10 +1,5 @@
 @RemoteControlApi_HostAddress = http://localhost:5067
 
-GET {{RemoteControlApi_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
-
 ### Send notification (JSON)
 POST {{RemoteControlApi_HostAddress}}/api/notifications
 Content-Type: application/json
@@ -17,8 +12,33 @@ Content-Type: application/json
   "fileBase64": "SGVsbG8gd29ybGQ="
 }
 
+### Send notification (multipart form-data)
+POST {{RemoteControlApi_HostAddress}}/api/notifications/form
+Content-Type: multipart/form-data; boundary=MyBoundary
+
+--MyBoundary
+Content-Disposition: form-data; name="title"
+
+Hello from multipart
+--MyBoundary
+Content-Disposition: form-data; name="body"
+
+Message body
+--MyBoundary
+Content-Disposition: form-data; name="file"; filename="note.txt"
+Content-Type: text/plain
+
+< note.txt
+--MyBoundary--
+
 ### Get notifications
 GET {{RemoteControlApi_HostAddress}}/api/notifications
+
+### Clear notifications
+POST {{RemoteControlApi_HostAddress}}/api/notifications/clear
+
+### Stream notifications (SSE)
+GET {{RemoteControlApi_HostAddress}}/api/notifications/stream
 
 ### Report device version
 POST {{RemoteControlApi_HostAddress}}/api/devices/device123/version
@@ -30,4 +50,3 @@ Content-Type: application/json
 
 ### Fetch pending notifications for device
 GET {{RemoteControlApi_HostAddress}}/api/devices/device123/notifications
-

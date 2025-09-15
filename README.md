@@ -42,6 +42,19 @@ Device endpoints:
 - `GET /api/devices/{id}/notifications` – fetch notifications the device hasn't
   received yet.
 
+## API Endpoints
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/api/notifications` | Send a notification as JSON with optional Base64 file data. |
+| `POST` | `/api/notifications/form` | Send a notification via multipart form-data with an optional file. |
+| `GET` | `/api/notifications` | List stored notifications (most recent first, capped at 20). |
+| `POST` | `/api/notifications/clear` | Remove all stored notifications and delivery records. |
+| `GET` | `/api/notifications/stream` | Stream new notifications in real time using Server-Sent Events. |
+| `POST` | `/api/devices/{id}/version` | Report the current version of a device. |
+| `GET` | `/api/devices/{id}/notifications` | Fetch notifications a device has not yet received. |
+| `GET` | `/uploads/{filename}` | Download an uploaded file (URL returned in notification). |
+
 ## Postman / cURL
 
 Send a multipart request (form-data) with fields `id`, `title`, `body`, an optional `link`, and an optional `file`:
