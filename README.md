@@ -7,8 +7,8 @@ Hệ thống cung cấp backend quản lý thông báo và cập nhật ứng d�
   ```text
   Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertificate=True
   ```
-- Ở `Program.cs`, dịch vụ được cấu hình `UseSqlServer(...)` và luôn gọi `Database.Migrate()` khi khởi động ⇒ mọi migration mới sẽ được áp dụng tự động, không cần thao tác thủ công.
-- Migration đầu tiên (`20240717000000_InitialCreate`) tạo bảng và seed sẵn 3 phiên bản ứng dụng cùng 4 thông báo để bạn có dữ liệu tham chiếu ngay.
+- Ở `Program.cs`, dịch vụ được cấu hình `UseSqlServer(...)`, luôn gọi `Database.MigrateAsync()` và chạy `DatabaseSeeder.SeedAsync(...)` khi khởi động ⇒ mọi migration mới sẽ được áp dụng tự động và dữ liệu mẫu được thêm khi bảng còn trống.
+- Migration đầu tiên (`20240717000000_InitialCreate`) tạo bảng. Việc bổ sung 3 phiên bản ứng dụng và 4 thông báo mẫu được `DatabaseSeeder` thực hiện ngay sau bước migrate.
 
 ## 2. Mô hình dữ liệu
 Hệ thống gồm hai bảng chính với quan hệ 1-n:
@@ -58,6 +58,8 @@ CREATE TABLE Notifications (
 | 2              | 🚀 Bản cập nhật 1.1.0 | Có nhiều cải tiến mới, tải ngay!        | 2025-08-15 10:00:00    | 2            | 1        |
 | 3              | ⚡ Cập nhật 1.2.0     | Fix lỗi đăng nhập + UI dark mode        | 2025-09-17 09:30:00    | 3            | 1        |
 | 4              | 🔧 Bảo trì hệ thống   | Hệ thống sẽ bảo trì 23h ngày 20/09      | 2025-09-17 12:00:00    | NULL         | 1        |
+
+> Các bản ghi trên được `DatabaseSeeder` thêm tự động khi phát hiện bảng đang trống.
 
 ## 3. Luồng chính
 1. **Admin phát hành bản mới**
@@ -237,5 +239,5 @@ curl -OJ "https://<host>/api/control/app-version/download?platform=android"
 ## 5. Ghi chú vận hành
 - Tất cả endpoint mặc định không bật HTTPS khi chạy local; nếu deploy reverse proxy hãy cấu hình lại theo môi trường thực tế.
 - Thư mục `wwwroot/uploads` chứa file đính kèm trong thông báo, còn `Builds/` chứa các gói ứng dụng upload.
-- Khi cần bổ sung bảng hoặc quan hệ mới, hãy tạo migration EF Core rồi deploy; dịch vụ sẽ tự động cập nhật schema nhờ `Database.Migrate()`.
+- Khi cần bổ sung bảng hoặc quan hệ mới, hãy tạo migration EF Core rồi deploy; dịch vụ sẽ tự động cập nhật schema nhờ `Database.MigrateAsync()`.
 

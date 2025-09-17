@@ -55,27 +55,6 @@ public partial class InitialCreate : Migration
                     onDelete: ReferentialAction.SetNull);
             });
 
-        migrationBuilder.InsertData(
-            table: "AppVersions",
-            columns: new[] { "AppVersionId", "FileChecksum", "FileUrl", "ReleaseDate", "ReleaseNotes", "VersionName" },
-            values: new object[,]
-            {
-                { 1, "a1b2c3", "https://example.com/v1.0.0.apk", new DateTime(2025, 7, 1, 9, 0, 0, DateTimeKind.Utc), "Ra mắt ứng dụng", "1.0.0" },
-                { 2, "b2c3d4", "https://example.com/v1.1.0.apk", new DateTime(2025, 8, 15, 10, 0, 0, DateTimeKind.Utc), "Thêm chức năng X, fix bug Y", "1.1.0" },
-                { 3, "c3d4e5", "https://example.com/v1.2.0.apk", new DateTime(2025, 9, 17, 9, 30, 0, DateTimeKind.Utc), "Fix lỗi đăng nhập, UI tối ưu", "1.2.0" }
-            });
-
-        migrationBuilder.InsertData(
-            table: "Notifications",
-            columns: new[] { "NotificationId", "AppVersionId", "CreatedAt", "FileUrl", "IsActive", "Link", "Message", "Title" },
-            values: new object[,]
-            {
-                { 1, 1, new DateTime(2025, 7, 1, 9, 0, 0, DateTimeKind.Utc), null, false, null, "Phiên bản 1.0.0 đã chính thức ra mắt", "🎉 Ra mắt ứng dụng" },
-                { 2, 2, new DateTime(2025, 8, 15, 10, 0, 0, DateTimeKind.Utc), null, true, null, "Có nhiều cải tiến mới, tải ngay!", "🚀 Bản cập nhật 1.1.0" },
-                { 3, 3, new DateTime(2025, 9, 17, 9, 30, 0, DateTimeKind.Utc), null, true, null, "Fix lỗi đăng nhập + UI dark mode", "⚡ Cập nhật 1.2.0" },
-                { 4, null, new DateTime(2025, 9, 17, 12, 0, 0, DateTimeKind.Utc), null, true, null, "Hệ thống sẽ bảo trì 23h ngày 20/09", "🔧 Bảo trì hệ thống" }
-            });
-
         migrationBuilder.CreateIndex(
             name: "IX_Notifications_AppVersionId",
             table: "Notifications",

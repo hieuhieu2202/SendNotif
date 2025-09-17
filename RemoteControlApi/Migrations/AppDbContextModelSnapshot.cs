@@ -49,34 +49,6 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
 
             b.ToTable("AppVersions");
 
-            b.HasData(
-                new
-                {
-                    AppVersionId = 1,
-                    FileChecksum = "a1b2c3",
-                    FileUrl = "https://example.com/v1.0.0.apk",
-                    ReleaseDate = new DateTime(2025, 7, 1, 9, 0, 0, DateTimeKind.Utc),
-                    ReleaseNotes = "Ra mắt ứng dụng",
-                    VersionName = "1.0.0"
-                },
-                new
-                {
-                    AppVersionId = 2,
-                    FileChecksum = "b2c3d4",
-                    FileUrl = "https://example.com/v1.1.0.apk",
-                    ReleaseDate = new DateTime(2025, 8, 15, 10, 0, 0, DateTimeKind.Utc),
-                    ReleaseNotes = "Thêm chức năng X, fix bug Y",
-                    VersionName = "1.1.0"
-                },
-                new
-                {
-                    AppVersionId = 3,
-                    FileChecksum = "c3d4e5",
-                    FileUrl = "https://example.com/v1.2.0.apk",
-                    ReleaseDate = new DateTime(2025, 9, 17, 9, 30, 0, DateTimeKind.Utc),
-                    ReleaseNotes = "Fix lỗi đăng nhập, UI tối ưu",
-                    VersionName = "1.2.0"
-                });
         });
 
         modelBuilder.Entity("RemoteControlApi.Entities.Notification", b =>
@@ -118,51 +90,6 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
 
             b.ToTable("Notifications");
 
-            b.HasData(
-                new
-                {
-                    NotificationId = 1,
-                    AppVersionId = 1,
-                    CreatedAt = new DateTime(2025, 7, 1, 9, 0, 0, DateTimeKind.Utc),
-                    FileUrl = (string?)null,
-                    IsActive = false,
-                    Link = (string?)null,
-                    Message = "Phiên bản 1.0.0 đã chính thức ra mắt",
-                    Title = "🎉 Ra mắt ứng dụng"
-                },
-                new
-                {
-                    NotificationId = 2,
-                    AppVersionId = 2,
-                    CreatedAt = new DateTime(2025, 8, 15, 10, 0, 0, DateTimeKind.Utc),
-                    FileUrl = (string?)null,
-                    IsActive = true,
-                    Link = (string?)null,
-                    Message = "Có nhiều cải tiến mới, tải ngay!",
-                    Title = "🚀 Bản cập nhật 1.1.0"
-                },
-                new
-                {
-                    NotificationId = 3,
-                    AppVersionId = 3,
-                    CreatedAt = new DateTime(2025, 9, 17, 9, 30, 0, DateTimeKind.Utc),
-                    FileUrl = (string?)null,
-                    IsActive = true,
-                    Link = (string?)null,
-                    Message = "Fix lỗi đăng nhập + UI dark mode",
-                    Title = "⚡ Cập nhật 1.2.0"
-                },
-                new
-                {
-                    NotificationId = 4,
-                    AppVersionId = (int?)null,
-                    CreatedAt = new DateTime(2025, 9, 17, 12, 0, 0, DateTimeKind.Utc),
-                    FileUrl = (string?)null,
-                    IsActive = true,
-                    Link = (string?)null,
-                    Message = "Hệ thống sẽ bảo trì 23h ngày 20/09",
-                    Title = "🔧 Bảo trì hệ thống"
-                });
         });
 
         modelBuilder.Entity("RemoteControlApi.Entities.Notification", b =>
