@@ -1,6 +1,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using RemoteControlApi.Data;
 
@@ -13,33 +14,36 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
 {
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasAnnotation("ProductVersion", "8.0.6");
+        modelBuilder
+            .HasAnnotation("ProductVersion", "8.0.6")
+            .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
         modelBuilder.Entity("RemoteControlApi.Entities.AppVersion", b =>
         {
             b.Property<int>("AppVersionId")
                 .ValueGeneratedOnAdd()
-                .HasColumnType("INTEGER");
+                .HasColumnType("int")
+                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
             b.Property<string>("FileChecksum")
                 .HasMaxLength(128)
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(128)");
 
             b.Property<string>("FileUrl")
                 .IsRequired()
                 .HasMaxLength(255)
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(255)");
 
             b.Property<DateTime>("ReleaseDate")
-                .HasColumnType("TEXT");
+                .HasColumnType("datetime2");
 
             b.Property<string>("ReleaseNotes")
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(max)");
 
             b.Property<string>("VersionName")
                 .IsRequired()
                 .HasMaxLength(50)
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(50)");
 
             b.HasKey("AppVersionId");
 
@@ -79,33 +83,34 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
         {
             b.Property<int>("NotificationId")
                 .ValueGeneratedOnAdd()
-                .HasColumnType("INTEGER");
+                .HasColumnType("int")
+                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
             b.Property<int?>("AppVersionId")
-                .HasColumnType("INTEGER");
+                .HasColumnType("int");
 
             b.Property<DateTime>("CreatedAt")
-                .HasColumnType("TEXT");
+                .HasColumnType("datetime2");
 
             b.Property<string>("FileUrl")
                 .HasMaxLength(255)
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(255)");
 
             b.Property<bool>("IsActive")
-                .HasColumnType("INTEGER");
+                .HasColumnType("bit");
 
             b.Property<string>("Link")
                 .HasMaxLength(255)
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(255)");
 
             b.Property<string>("Message")
                 .IsRequired()
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(max)");
 
             b.Property<string>("Title")
                 .IsRequired()
                 .HasMaxLength(100)
-                .HasColumnType("TEXT");
+                .HasColumnType("nvarchar(100)");
 
             b.HasKey("NotificationId");
 

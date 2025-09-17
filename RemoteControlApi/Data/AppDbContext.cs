@@ -21,7 +21,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.VersionName).HasMaxLength(50).IsRequired();
             entity.Property(e => e.FileUrl).HasMaxLength(255).IsRequired();
             entity.Property(e => e.FileChecksum).HasMaxLength(128);
-            entity.Property(e => e.ReleaseDate).HasColumnType("TEXT");
+            entity.Property(e => e.ReleaseDate).HasColumnType("datetime2");
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -29,7 +29,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Link).HasMaxLength(255);
             entity.Property(e => e.FileUrl).HasMaxLength(255);
-            entity.Property(e => e.CreatedAt).HasColumnType("TEXT");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2");
 
             entity.HasOne(n => n.AppVersion)
                 .WithMany(a => a.Notifications)

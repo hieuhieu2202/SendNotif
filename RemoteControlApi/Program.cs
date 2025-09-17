@@ -5,10 +5,10 @@ using RemoteControlApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("AppDatabase") ?? "Data Source=AppData/app.db";
-connectionString = EnsureSqliteAbsolutePath(connectionString, builder.Environment.ContentRootPath);
+var connectionString = builder.Configuration.GetConnectionString("AppDatabase")
+    ?? "Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertificate=True";
 
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -64,34 +64,3 @@ app.MapGet("/", ctx =>
 });
 
 app.Run();
-
-static string EnsureSqliteAbsolutePath(string connectionString, string contentRoot)
-{
-    const string dataSourceKey = "Data Source=";
-    var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
-    for (var i = 0; i < parts.Length; i++)
-    {
-        var part = parts[i].Trim();
-        if (!part.StartsWith(dataSourceKey, StringComparison.OrdinalIgnoreCase))
-        {
-            continue;
-        }
-
-        var path = part[dataSourceKey.Length..].Trim();
-        if (Path.IsPathRooted(path))
-        {
-            continue;
-        }
-
-        var absolutePath = Path.Combine(contentRoot, path);
-        var directory = Path.GetDirectoryName(absolutePath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        parts[i] = $"{dataSourceKey}{absolutePath}";
-    }
-
-    return string.Join(';', parts);
-}
