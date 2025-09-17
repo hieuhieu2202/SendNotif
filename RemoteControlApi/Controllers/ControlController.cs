@@ -54,10 +54,9 @@ public class ControlController : ControllerBase
 
         return new AppVersionInfo
         {
-            Latest = "1.0.0",
-            MinSupported = "1.0.0",
-            NotesVi = "Khởi tạo.",
-            Build = 10000,
+            Latest = string.Empty,
+            MinSupported = string.Empty,
+            Build = 0,
             UpdatedAt = DateTimeOffset.UtcNow,
             Files = new Dictionary<string, AppFileInfo>() // key: "android"/"ios"
         };
