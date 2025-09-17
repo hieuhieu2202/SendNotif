@@ -45,6 +45,22 @@ POST {{RemoteControlApi_HostAddress}}/api/Control/clear-notifications
 ### Stream notifications (SSE)
 GET {{RemoteControlApi_HostAddress}}/api/Control/notifications-stream
 
+### Report device version
+POST {{RemoteControlApi_HostAddress}}/api/devices/demo-device/version
+Content-Type: application/json
+
+{
+  "version": "1.2.3",
+  "cardCode": "CARD001"
+}
+
+### Fetch notifications for device
+GET {{RemoteControlApi_HostAddress}}/api/devices/demo-device/notifications?includeRead=false
+
+### Mark notification as read
+# Replace NOTIFICATION_ID with the value returned by the fetch endpoint
+POST {{RemoteControlApi_HostAddress}}/api/devices/demo-device/notifications/NOTIFICATION_ID/read
+
 ### Get app version info
 GET {{RemoteControlApi_HostAddress}}/api/Control/app-version
 

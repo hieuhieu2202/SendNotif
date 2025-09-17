@@ -46,10 +46,13 @@ retains only the most recent 20).
 | 3 | `GET /api/Control/get-notifications` | Lấy danh sách thông báo hiện có (có phân trang). |
 | 4 | `POST /api/Control/clear-notifications` | Xóa toàn bộ thông báo khỏi hàng đợi. |
 | 5 | `GET /api/Control/notifications-stream` | Stream SSE để nhận thông báo thời gian thực. |
-| 6 | `GET /api/Control/app-version` | Trả về thông tin phiên bản ứng dụng mới nhất. |
-| 7 | `POST /api/Control/app-version/upload` | Upload bản build mới (APK/IPA) và cập nhật manifest. |
-| 8 | `GET /api/Control/app-version/download` | Tải xuống bản build mới cho thiết bị (Android/iOS). |
-| 9 | `HEAD /api/Control/app-version/download` | Kiểm tra metadata (kích thước, SHA256, content type) của bản build mới. |
+| 6 | `GET /api/devices/{deviceId}/notifications` | Lấy thông báo (chưa đọc hoặc toàn bộ) cho một thiết bị và cập nhật `LastSeen`. |
+| 7 | `POST /api/devices/{deviceId}/notifications/{notificationId}/read` | Đánh dấu thông báo đã đọc, ghi nhận thời điểm và cập nhật trạng thái. |
+| 8 | `POST /api/devices/{deviceId}/version` | Thiết bị báo phiên bản hiện tại (kèm `cardCode` tuỳ chọn) để server so sánh với bản mới nhất. |
+| 9 | `GET /api/Control/app-version` | Trả về thông tin phiên bản ứng dụng mới nhất. |
+| 10 | `POST /api/Control/app-version/upload` | Upload bản build mới (APK/IPA) và cập nhật manifest. |
+| 11 | `GET /api/Control/app-version/download` | Tải xuống bản build mới cho thiết bị (Android/iOS). |
+| 12 | `HEAD /api/Control/app-version/download` | Kiểm tra metadata (kích thước, SHA256, content type) của bản build mới. |
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
@@ -87,6 +90,38 @@ GET http://localhost:5067/api/Control/get-notifications
 ```
 
 Responses include a `fileUrl` you can open to download or preview the uploaded file.
+
+### Device flows
+
+- **Báo phiên bản đang chạy**
+
+  ```http
+  POST http://localhost:5067/api/devices/{deviceId}/version
+  Content-Type: application/json
+
+  {
+    "version": "1.2.3",
+    "cardCode": "MB001"
+  }
+  ```
+
+  Phản hồi trả về phiên bản mới nhất trên server (nếu có) và cờ `updateRequired` cho biết thiết bị đã lỗi thời.
+
+- **Lấy thông báo dành cho thiết bị**
+
+  ```http
+  GET http://localhost:5067/api/devices/{deviceId}/notifications?includeRead=false
+  ```
+
+  Lần gọi đầu sẽ tự tạo bản ghi `DeviceNotifications` còn thiếu và chuyển mọi thông báo trạng thái `Pending` sang `Delivered`. Thuộc tính `notifications` chứa tiêu đề, nội dung, link, file Base64/URL.
+
+- **Đánh dấu đã đọc**
+
+  ```http
+  POST http://localhost:5067/api/devices/{deviceId}/notifications/{notificationId}/read
+  ```
+
+  Cập nhật trường `ReadAt`, trạng thái `Read` và mốc `LastSeen` của thiết bị.
 
 SQL Server DDL for the backing tables is available in `sql/create_tables.sql`.
 
