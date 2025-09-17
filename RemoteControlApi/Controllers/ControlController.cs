@@ -85,6 +85,40 @@ public class ControlController : ControllerBase
         Response.Headers[HeaderNames.Expires] = "0";
     }
 
+    private static bool TryParseVersionString(string? value, out Version version)
+    {
+        version = new Version(0, 0);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var parts = value.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length is < 1 or > 4)
+        {
+            return false;
+        }
+
+        var numbers = new int[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (!int.TryParse(parts[i], out numbers[i]) || numbers[i] < 0)
+            {
+                return false;
+            }
+        }
+
+        version = parts.Length switch
+        {
+            1 => new Version(numbers[0], 0),
+            2 => new Version(numbers[0], numbers[1]),
+            3 => new Version(numbers[0], numbers[1], numbers[2]),
+            _ => new Version(numbers[0], numbers[1], numbers[2], numbers[3])
+        };
+
+        return true;
+    }
+
     [HttpPost("send-notification-json")]
     [Consumes("application/json")]
     public async Task<IActionResult> SendNotificationJson([FromBody] NotificationMessage message)
@@ -306,6 +340,65 @@ public class ControlController : ControllerBase
     {
         SetNoCache();
         return Ok(_appVersion);
+    }
+
+    [HttpGet("check-app-version")]
+    public async Task<IActionResult> CheckAppVersion([FromQuery][Required] string currentVersion)
+    {
+        var latestVersion = await _dbContext.AppVersions
+            .AsNoTracking()
+            .OrderByDescending(v => v.ReleaseDate)
+            .ThenByDescending(v => v.AppVersionId)
+            .FirstOrDefaultAsync();
+
+        SetNoCache();
+
+        if (latestVersion is null)
+        {
+            return Ok(new
+            {
+                currentVersion,
+                updateAvailable = false,
+                message = "Chưa có thông tin phiên bản nào trên máy chủ",
+                latestVersion = (object?)null
+            });
+        }
+
+        var hasCurrent = TryParseVersionString(currentVersion, out var currentVer);
+        var hasLatest = TryParseVersionString(latestVersion.VersionName, out var latestVer);
+
+        bool updateAvailable = false;
+        string? comparisonNote = null;
+
+        if (hasCurrent && hasLatest)
+        {
+            updateAvailable = currentVer < latestVer;
+        }
+        else if (!hasCurrent)
+        {
+            comparisonNote = "currentVersion không đúng định dạng x.y.z";
+        }
+        else if (!hasLatest)
+        {
+            comparisonNote = "Dữ liệu phiên bản trên máy chủ không hợp lệ";
+        }
+
+        return Ok(new
+        {
+            currentVersion,
+            serverVersion = latestVersion.VersionName,
+            updateAvailable,
+            comparisonNote,
+            latestRelease = new
+            {
+                latestVersion.AppVersionId,
+                latestVersion.VersionName,
+                latestVersion.ReleaseNotes,
+                latestVersion.FileUrl,
+                latestVersion.FileChecksum,
+                latestVersion.ReleaseDate
+            }
+        });
     }
 
     [HttpPost("app-version/upload")]
