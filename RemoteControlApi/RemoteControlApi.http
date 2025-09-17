@@ -1,6 +1,86 @@
 @RemoteControlApi_HostAddress = http://localhost:5067
 
-GET {{RemoteControlApi_HostAddress}}/weatherforecast/
-Accept: application/json
+### Send notification (JSON)
+POST {{RemoteControlApi_HostAddress}}/api/Control/send-notification-json
+Content-Type: application/json
 
-###
+{
+  "title": "Hello",
+  "body": "Test from http file",
+  "link": "https://example.com",
+  "targetVersion": "1.2.3",
+  "fileName": "note.txt",
+  "fileBase64": "SGVsbG8gd29ybGQ="
+}
+
+### Send notification (multipart form-data)
+POST {{RemoteControlApi_HostAddress}}/api/Control/send-notification
+Content-Type: multipart/form-data; boundary=MyBoundary
+
+--MyBoundary
+Content-Disposition: form-data; name="title"
+
+Hello from multipart
+--MyBoundary
+Content-Disposition: form-data; name="body"
+
+Message body
+--MyBoundary
+Content-Disposition: form-data; name="targetVersion"
+
+1.2.3
+--MyBoundary
+Content-Disposition: form-data; name="file"; filename="note.txt"
+Content-Type: text/plain
+
+< note.txt
+--MyBoundary--
+
+### Get notifications
+GET {{RemoteControlApi_HostAddress}}/api/Control/get-notifications
+
+### Clear notifications
+POST {{RemoteControlApi_HostAddress}}/api/Control/clear-notifications
+
+### Stream notifications (SSE)
+GET {{RemoteControlApi_HostAddress}}/api/Control/notifications-stream
+
+### Report device version
+POST {{RemoteControlApi_HostAddress}}/api/devices/demo-device/version
+Content-Type: application/json
+
+{
+  "version": "1.2.3",
+  "cardCode": "CARD001"
+}
+
+### Fetch notifications for device
+GET {{RemoteControlApi_HostAddress}}/api/devices/demo-device/notifications?includeRead=false
+
+### Mark notification as read
+# Replace NOTIFICATION_ID with the value returned by the fetch endpoint
+POST {{RemoteControlApi_HostAddress}}/api/devices/demo-device/notifications/NOTIFICATION_ID/read
+
+### Get app version info
+GET {{RemoteControlApi_HostAddress}}/api/Control/app-version
+
+### Upload new app version
+POST {{RemoteControlApi_HostAddress}}/api/Control/app-version/upload
+Content-Type: multipart/form-data; boundary=MyBoundary
+
+--MyBoundary
+Content-Disposition: form-data; name="version"
+
+1.2.3
+--MyBoundary
+Content-Disposition: form-data; name="file"; filename="app.apk"
+Content-Type: application/octet-stream
+
+< app.apk
+--MyBoundary--
+
+### Download app version
+GET {{RemoteControlApi_HostAddress}}/api/Control/app-version/download
+
+### Check app version metadata
+HEAD {{RemoteControlApi_HostAddress}}/api/Control/app-version/download

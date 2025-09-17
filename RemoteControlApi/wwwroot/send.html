@@ -52,6 +52,14 @@
             <textarea id="body" name="body" required></textarea>
         </label>
         <label>
+            Link
+            <input id="link" name="link" />
+        </label>
+        <label>
+            Target Version
+            <input id="targetVersion" name="targetVersion" />
+        </label>
+        <label>
             File
             <input id="file" name="file" type="file" />
         </label>
@@ -61,11 +69,15 @@
     <h3>Result</h3>
     <pre id="result"></pre>
 
+    <h3>File Preview</h3>
+    <div id="preview"></div>
+
     <script>
         const urlFrom = (path) => new URL(path, window.location).toString();
 
         const form = document.getElementById('notifyForm');
         const result = document.getElementById('result');
+        const preview = document.getElementById('preview');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -73,16 +85,70 @@
 
             try {
                 const data = new FormData(form);
-                const res = await fetch(urlFrom('api/control/send-notification'), {
+                const res = await fetch(urlFrom('api/Control/send-notification'), {
                     method: 'POST',
                     body: data
                 });
 
-                let bodyText = await res.text();
-                try { bodyText = JSON.stringify(JSON.parse(bodyText), null, 2); } catch { }
-                result.textContent = `${res.status} ${res.statusText}\n\n${bodyText}`;
+                const text = await res.text();
+                let parsed;
+                try { parsed = JSON.parse(text); } catch { }
+                result.textContent = `${res.status} ${res.statusText}\n\n` +
+                    (parsed ? JSON.stringify(parsed, null, 2) : text);
 
-                if (res.ok) form.reset();
+                preview.innerHTML = '';
+                if (res.ok) {
+                    form.reset();
+                    const linkUrl = parsed?.message?.link;
+                    if (linkUrl) {
+                        const a = document.createElement('a');
+                        a.href = urlFrom(linkUrl);
+                        a.textContent = 'Open Link';
+                        a.target = '_blank';
+                        preview.appendChild(a);
+                    }
+                    const url = parsed?.message?.fileUrl;
+                    if (url) {
+                        const link = document.createElement('a');
+                        link.href = urlFrom(url);
+                        link.textContent = 'Download';
+                        link.target = '_blank';
+                        preview.appendChild(link);
+
+                        const lower = link.href.toLowerCase();
+                        if (lower.match(/\.(png|jpe?g|gif|bmp|webp)$/)) {
+                            const img = document.createElement('img');
+                            img.src = link.href;
+                            img.style.maxWidth = '520px';
+                            img.style.display = 'block';
+                            img.style.marginTop = '10px';
+                            preview.appendChild(img);
+                        } else if (lower.match(/\.(mp4|webm|ogg)$/)) {
+                            const video = document.createElement('video');
+                            video.src = link.href;
+                            video.controls = true;
+                            video.style.maxWidth = '520px';
+                            video.style.display = 'block';
+                            video.style.marginTop = '10px';
+                            preview.appendChild(video);
+                        } else if (lower.match(/\.(mp3|wav|ogg)$/)) {
+                            const audio = document.createElement('audio');
+                            audio.src = link.href;
+                            audio.controls = true;
+                            audio.style.display = 'block';
+                            audio.style.marginTop = '10px';
+                            preview.appendChild(audio);
+                        } else {
+                            const frame = document.createElement('iframe');
+                            frame.src = link.href;
+                            frame.width = 520;
+                            frame.height = 340;
+                            frame.style.display = 'block';
+                            frame.style.marginTop = '10px';
+                            preview.appendChild(frame);
+                        }
+                    }
+                }
             } catch (err) {
                 result.textContent = 'Error: ' + (err?.message || err);
             }

@@ -44,7 +44,18 @@
 
             const title = n.title ?? n.Title ?? '';
             const body = n.body ?? n.Body ?? '';
-            li.textContent = `${title}: ${body}`;
+            const targetVersion = n.targetVersion ?? n.TargetVersion;
+            li.textContent = targetVersion ? `[${targetVersion}] ${title}: ${body}` : `${title}: ${body}`;
+
+            const linkPath = n.link ?? n.Link;
+            if (linkPath) {
+                const a = document.createElement('a');
+                a.href = urlFrom(linkPath);
+                a.textContent = linkPath;
+                a.target = '_blank';
+                li.appendChild(document.createElement('br'));
+                li.appendChild(a);
+            }
 
             const url = n.fileUrl ?? n.FileUrl;
             if (url) {
@@ -103,7 +114,7 @@
         }
 
         async function load() {
-            const res = await fetch(urlFrom('api/control/get-notifications'));
+            const res = await fetch(urlFrom('api/Control/get-notifications'));
             if (!res.ok) {
                 list.innerHTML = `<li>Load failed: ${res.status}</li>`;
                 return;
@@ -116,7 +127,7 @@
         load();
 
         // SSE phải dùng URL đúng base
-        const evt = new EventSource(urlFrom('api/control/notifications-stream'));
+        const evt = new EventSource(urlFrom('api/Control/notifications-stream'));
         evt.onmessage = e => add(JSON.parse(e.data));
         evt.onerror = () => {
             // optional: auto-reconnect (EventSource tự reconnect mặc định)

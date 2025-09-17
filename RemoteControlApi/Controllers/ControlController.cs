@@ -1,380 +1,319 @@
-﻿using System.Collections.Concurrent;
-using System.ComponentModel.DataAnnotations;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Net.Http.Headers;
-using static RemoteControlApi.Model.NotiModel;
+using RemoteControlApi.Data;
+using RemoteControlApi.Model;
 
-namespace RemoteControlApi.Controllers
+namespace RemoteControlApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ControlController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class ControlController : ControllerBase
+    private const int MaxNotifications = 20;
+    private readonly NotificationDbContext _db;
+    private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
+
+    public ControlController(NotificationDbContext db)
     {
-        private static readonly string StoreRoot =
-            Path.Combine(AppContext.BaseDirectory, "Builds");
-        private static readonly string ManifestPath =
-            Path.Combine(StoreRoot, "manifest.json");
+        _db = db;
+    }
 
-        private static readonly ConcurrentQueue<NotificationMessage> _notifications = new();
-        private const int MaxNotifications = 1000;
-        private static readonly ConcurrentDictionary<Guid, Channel<NotificationMessage>> _streams = new();
-
-        private static AppVersionInfo _appVersion = LoadManifestOrDefault();
-
-        private static AppVersionInfo LoadManifestOrDefault()
+    // Notification endpoints
+    [HttpPost("send-notification-json")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(1_500_000_000)]
+    public async Task<IActionResult> SendNotificationJson([FromBody] NotificationMessage msg)
+    {
+        try
         {
-            Directory.CreateDirectory(StoreRoot);
-            if (System.IO.File.Exists(ManifestPath))
+            if (!string.IsNullOrWhiteSpace(msg.FileBase64) && !string.IsNullOrWhiteSpace(msg.FileName))
             {
-                try
-                {
-                    var json = System.IO.File.ReadAllText(ManifestPath);
-                    var data = JsonSerializer.Deserialize<AppVersionInfo>(json);
-                    if (data != null) return data;
-                }
-                catch { /* ignore, fallback */ }
+                await SaveBase64(msg);
             }
-            return new AppVersionInfo
-            {
-                Latest = "1.0.0",
-                MinSupported = "1.0.0",
-                NotesVi = "Khởi tạo.",
-                Build = 10000,
-                UpdatedAt = DateTimeOffset.UtcNow,
-                Files = new Dictionary<string, AppFileInfo>() // key: "android"/"ios"
-            };
+            return Handle(msg);
         }
-
-        private static void SaveManifest()
+        catch (Exception ex)
         {
-            var json = JsonSerializer.Serialize(_appVersion, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
-            System.IO.File.WriteAllText(ManifestPath, json);
-        }
-
-        private void SetNoCache()
-        {
-            var headers = Response.GetTypedHeaders();
-            headers.CacheControl = new CacheControlHeaderValue
-            {
-                NoCache = true,
-                NoStore = true,
-                MustRevalidate = true
-            };
-            Response.Headers[HeaderNames.Pragma] = "no-cache";
-            Response.Headers[HeaderNames.Expires] = "0";
-        }
-
-
-
-        [HttpPost("send-notification-json")]
-        [Consumes("application/json")]
-        public async Task<IActionResult> SendNotificationJson([FromBody] NotificationMessage message)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(message.FileBase64))
-                {
-                    var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-                    var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-                    Directory.CreateDirectory(webrootPath);
-                    var uploads = Path.Combine(webrootPath, "uploads");
-                    Directory.CreateDirectory(uploads);
-
-                    var ext = Path.GetExtension(message.FileName);
-                    if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
-                    var fileName = $"{Guid.NewGuid():N}{ext}";
-                    var fullPath = Path.Combine(uploads, fileName);
-                    var bytes = Convert.FromBase64String(message.FileBase64);
-                    await System.IO.File.WriteAllBytesAsync(fullPath, bytes);
-
-                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-                    message.FileUrl = $"{basePath}/uploads/{fileName}";
-                }
-
-                return HandleNotification(message);
-            }
-            catch (Exception ex)
-            {
-                return Problem(detail: ex.Message);
-            }
-        }
-
-        public async Task<IActionResult> SendNotificationUnified()
-        {
-            try
-            {
-                NotificationMessage msg;
-
-                if (Request.HasFormContentType)
-                {
-                    // multipart/form-data (hoặc x-www-form-urlencoded)
-                    var form = await Request.ReadFormAsync();
-
-                    msg = new NotificationMessage
-                    {
-                        Id = string.IsNullOrWhiteSpace(form["id"]) ? null : form["id"].ToString(),
-                        Title = form["title"],
-                        Body = form["body"]
-                    };
-
-                    // file là tuỳ chọn
-                    var file = form.Files.GetFile("file");
-                    if (file is { Length: > 0 })
-                    {
-                        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-                        var webrootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-                        Directory.CreateDirectory(webrootPath);
-                        var uploads = Path.Combine(webrootPath, "uploads");
-                        Directory.CreateDirectory(uploads);
-
-                        var ext = Path.GetExtension(file.FileName);
-                        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
-
-                        var fileName = $"{Guid.NewGuid():N}{ext}";
-                        var fullPath = Path.Combine(uploads, fileName);
-
-                    await using (var fs = System.IO.File.Create(fullPath))
-                    {
-                        await file.CopyToAsync(fs);
-
-                    }
-                    var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
-                    message.FileBase64 = Convert.ToBase64String(bytes);
-                    message.FileName = file.FileName;
-                    var basePath = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-                    message.FileUrl = $"{basePath}/uploads/{fileName}";
-                }
-
-                // Validate + broadcast + no-cache như cũ
-                return HandleNotification(msg);
-            }
-            catch (JsonException)
-            {
-                return BadRequest(new { error = "JSON không hợp lệ." });
-            }
-            catch (Exception ex)
-            {
-                // Có thể log thêm tại đây
-                return Problem(detail: ex.Message);
-            }
-        }
-
-
-        private IActionResult HandleNotification(NotificationMessage message)
-        {
-            if (!TryValidateModel(message)) return ValidationProblem(ModelState);
-            message.TimestampUtc = DateTimeOffset.UtcNow;
-            message.Id = string.IsNullOrWhiteSpace(message.Id)
-                ? Guid.NewGuid().ToString("n")
-                : message.Id;
-            _notifications.Enqueue(message);
-            while (_notifications.Count > MaxNotifications && _notifications.TryDequeue(out _)) { }
-            foreach (var pair in _streams.ToArray())
-            {
-                if (!pair.Value.Writer.TryWrite(message))
-                    _streams.TryRemove(pair.Key, out _);
-            }
-            SetNoCache();
-            return Ok(new { status = "Notification received", message });
-        }
-
-        [HttpGet("get-notifications")]
-        public IActionResult GetNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
-        {
-            page = Math.Max(1, page);
-            pageSize = Math.Clamp(pageSize, 1, 200);
-            var items = _notifications.ToArray()
-                .OrderByDescending(x => x.TimestampUtc)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-            SetNoCache();
-            return Ok(new
-            {
-                total = _notifications.Count,
-                page,
-                pageSize,
-                items
-            });
-        }
-
-        [HttpPost("clear-notifications")]
-        public IActionResult Clear()
-        {
-            while (_notifications.TryDequeue(out _)) { }
-            SetNoCache();
-            return Ok(new { status = "Cleared" });
-        }
-
-        [HttpGet("notifications-stream")]
-        public async Task NotificationsStream(CancellationToken cancellationToken)
-        {
-            SetNoCache();
-            Response.Headers[HeaderNames.ContentType] = "text/event-stream";
-            var id = Guid.NewGuid();
-            var channel = Channel.CreateUnbounded<NotificationMessage>();
-            _streams[id] = channel;
-            try
-            {
-                await foreach (var msg in channel.Reader.ReadAllAsync(cancellationToken))
-                {
-                    var json = JsonSerializer.Serialize(msg);
-                    await Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-                    await Response.Body.FlushAsync(cancellationToken);
-                }
-            }
-            catch (OperationCanceledException) { }
-            finally
-            {
-                _streams.TryRemove(id, out _);
-            }
-        }
-
-        [HttpGet("app-version")]
-        public IActionResult GetAppVersion() { SetNoCache(); return Ok(_appVersion); }
-
-
-        [HttpPost("app-version/upload")]
-        [RequestSizeLimit(1_500_000_000)] 
-        [DisableRequestSizeLimit]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadBuild(
-            [FromForm][Required] string latest,
-            [FromForm][Required] string minSupported,
-            [FromForm] string? notesVi,
-            [FromForm] string? notesEn,
-            [FromForm][Required] string platform,
-            [FromForm] int? build,
-            [Required] IFormFile file)
-        {
-            platform = platform.Trim().ToLowerInvariant();
-            if (platform is not ("android" or "ios"))
-                return BadRequest(new { error = "platform must be 'android' or 'ios'" });
-
-            // Kiểm tra version format
-            bool validVer(string v) => System.Text.RegularExpressions.Regex.IsMatch(v, @"^\d+(\.\d+){0,2}$");
-            if (!validVer(latest) || !validVer(minSupported))
-                return BadRequest(new { error = "Invalid version format. Use 'x.y.z'." });
-
-            if (file.Length <= 0) return BadRequest(new { error = "Empty file" });
-
-            // Đặt tên file: app-{platform}-{latest}-{ticks}.ext
-            var ext = Path.GetExtension(file.FileName);
-            if (string.IsNullOrWhiteSpace(ext))
-                ext = platform == "android" ? ".apk" : ".ipa";
-            var ticks = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var safeName = $"app-{platform}-{latest}-{ticks}{ext}";
-            var fullPath = Path.Combine(StoreRoot, safeName);
-
-            Directory.CreateDirectory(StoreRoot);
-
-            // Lưu file & tính SHA256/size
-            await using (var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
-            {
-                await file.CopyToAsync(fs);
-            }
-            var size = new FileInfo(fullPath).Length;
-            string sha256;
-            await using (var fs = System.IO.File.OpenRead(fullPath))
-            using (var sha = SHA256.Create())
-            {
-                var hash = await sha.ComputeHashAsync(fs);
-                sha256 = Convert.ToHexString(hash).ToLowerInvariant();
-            }
-
-            // Cập nhật manifest
-            _appVersion.Latest = latest;
-            _appVersion.MinSupported = minSupported;
-            _appVersion.NotesVi = notesVi;
-            _appVersion.NotesEn = notesEn;
-            _appVersion.Build = build ?? Math.Max(_appVersion.Build + 1, 10001);
-            _appVersion.UpdatedAt = DateTimeOffset.UtcNow;
-
-            _appVersion.Files ??= new Dictionary<string, AppFileInfo>();
-            _appVersion.Files[platform] = new AppFileInfo
-            {
-                FileName = safeName,
-                RelativePath = safeName,
-                SizeBytes = size,
-                Sha256 = sha256,
-                ContentType = GetContentTypeByPlatform(platform, ext)
-            };
-
-            SaveManifest();
-
-            SetNoCache();
-            return Ok(new
-            {
-                status = "uploaded",
-                version = _appVersion.Latest,
-                platform,
-                file = _appVersion.Files[platform]
-            });
-        }
-
-
-        [HttpGet("app-version/download")]
-        public IActionResult DownloadLatest([FromQuery] string platform = "android")
-        {
-            platform = platform.Trim().ToLowerInvariant();
-            if (_appVersion.Files == null || !_appVersion.Files.TryGetValue(platform, out var fileInfo))
-                return NotFound(new { error = "No build available for this platform" });
-
-            var relPath = fileInfo.RelativePath;
-            if (string.IsNullOrEmpty(relPath))
-                return NotFound(new { error = "File path not specified" });
-            var path = Path.Combine(StoreRoot, relPath);
-            if (!System.IO.File.Exists(path))
-                return NotFound(new { error = "File not found on server" });
-
-            var contentType = fileInfo.ContentType ?? "application/octet-stream";
-            var fileName = fileInfo.FileName ?? Path.GetFileName(path);
-
-            // ETag dựa trên SHA256 để client cache/validate
-            Response.Headers[HeaderNames.ETag] = $"\"{fileInfo.Sha256}\"";
-            // Cho phép resume
-            var result = PhysicalFile(path, contentType, fileDownloadName: fileName, enableRangeProcessing: true);
-            // Gợi ý không cache lâu
-            SetNoCache();
-            return result;
-        }
-
-        [HttpHead("app-version/download")]
-        public IActionResult HeadLatest([FromQuery] string platform = "android")
-        {
-            platform = platform.Trim().ToLowerInvariant();
-            if (_appVersion.Files == null || !_appVersion.Files.TryGetValue(platform, out var fileInfo))
-                return NotFound();
-
-            var relPathHead = fileInfo.RelativePath;
-            if (string.IsNullOrEmpty(relPathHead)) return NotFound();
-            var path = Path.Combine(StoreRoot, relPathHead);
-            if (!System.IO.File.Exists(path)) return NotFound();
-
-            Response.Headers[HeaderNames.ContentLength] = fileInfo.SizeBytes.ToString();
-            Response.Headers[HeaderNames.ETag] = $"\"{fileInfo.Sha256}\"";
-            Response.Headers[HeaderNames.ContentType] = fileInfo.ContentType ?? "application/octet-stream";
-            SetNoCache();
-            return Ok();
-        }
-
-        private static string GetContentTypeByPlatform(string platform, string ext)
-        {
-            var provider = new FileExtensionContentTypeProvider();
-            if (!provider.TryGetContentType("x" + ext, out var ct))
-                ct = "application/octet-stream";
-            if (platform == "android") ct = "application/vnd.android.package-archive";
-            if (platform == "ios") ct = "application/octet-stream"; // .ipa
-            return ct;
+            return Problem(detail: ex.Message);
         }
     }
-}
 
-    
+    [HttpPost("send-notification")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(1_500_000_000)]
+    public async Task<IActionResult> SendNotification([FromForm] SendNotificationFormData data)
+    {
+        try
+        {
+            var msg = new NotificationMessage
+            {
+                Id = data.Id,
+                Title = data.Title,
+                Body = data.Body,
+                Link = data.Link,
+                TargetVersion = data.TargetVersion
+            };
+            if (data.File != null && data.File.Length > 0)
+            {
+                await SaveFormFile(data.File, msg);
+            }
+            return Handle(msg);
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message);
+        }
+    }
+
+    [HttpGet("get-notifications")]
+    public IActionResult GetNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 200);
+        var items = _db.Notifications
+            .OrderByDescending(x => x.TimestampUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+        SetNoCache();
+        return Ok(new { total = _db.Notifications.Count(), page, pageSize, items });
+    }
+
+    [HttpPost("clear-notifications")]
+    public IActionResult ClearNotifications()
+    {
+        _db.DeviceNotifications.RemoveRange(_db.DeviceNotifications);
+        _db.Notifications.RemoveRange(_db.Notifications);
+        _db.SaveChanges();
+        SetNoCache();
+        return Ok(new { status = "Cleared" });
+    }
+
+    [HttpGet("notifications-stream")]
+    public async Task NotificationsStream(CancellationToken cancellationToken)
+    {
+        SetNoCache();
+        Response.Headers[HeaderNames.ContentType] = "text/event-stream";
+        var id = Guid.NewGuid();
+        var channel = Channel.CreateUnbounded<NotificationMessage>();
+        _streams[id] = channel;
+        try
+        {
+            await foreach (var msg in channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                var json = JsonSerializer.Serialize(msg);
+                await Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            _streams.TryRemove(id, out _);
+        }
+    }
+
+    private async Task SaveFormFile(IFormFile file, NotificationMessage msg)
+    {
+        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        var uploads = Path.Combine(webroot, "uploads");
+        Directory.CreateDirectory(uploads);
+        var ext = Path.GetExtension(file.FileName);
+        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(uploads, fileName);
+        await using (var fs = System.IO.File.Create(fullPath))
+        {
+            await file.CopyToAsync(fs);
+        }
+        var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+        msg.FileBase64 = Convert.ToBase64String(bytes);
+        msg.FileName = file.FileName;
+        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+        msg.FileUrl = $"{baseUrl}/uploads/{fileName}";
+    }
+
+    private async Task SaveBase64(NotificationMessage msg)
+    {
+        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        var uploads = Path.Combine(webroot, "uploads");
+        Directory.CreateDirectory(uploads);
+        var ext = Path.GetExtension(msg.FileName);
+        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(uploads, fileName);
+        var bytes = Convert.FromBase64String(msg.FileBase64!);
+        await System.IO.File.WriteAllBytesAsync(fullPath, bytes);
+        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+        msg.FileUrl = $"{baseUrl}/uploads/{fileName}";
+    }
+
+    private IActionResult Handle(NotificationMessage msg)
+    {
+        if (!TryValidateModel(msg)) return ValidationProblem(ModelState);
+        msg.TimestampUtc = DateTimeOffset.UtcNow;
+        msg.Id = string.IsNullOrWhiteSpace(msg.Id) ? Guid.NewGuid().ToString("n") : msg.Id;
+
+        var deviceIds = _db.Devices.Select(d => d.DeviceId).ToList();
+
+        _db.Notifications.Add(msg);
+
+        if (deviceIds.Count > 0)
+        {
+            foreach (var deviceId in deviceIds)
+            {
+                _db.DeviceNotifications.Add(new DeviceNotification
+                {
+                    DeviceId = deviceId,
+                    NotificationId = msg.Id!,
+                    Status = "Pending"
+                });
+            }
+        }
+
+        _db.SaveChanges();
+
+        var excess = _db.Notifications
+            .OrderByDescending(n => n.TimestampUtc)
+            .Skip(MaxNotifications)
+            .ToList();
+        if (excess.Count > 0)
+        {
+            _db.Notifications.RemoveRange(excess);
+            _db.SaveChanges();
+        }
+
+        foreach (var pair in _streams.ToArray())
+        {
+            if (!pair.Value.Writer.TryWrite(msg))
+                _streams.TryRemove(pair.Key, out _);
+        }
+        SetNoCache();
+        return Ok(new { status = "Notification received", message = msg });
+    }
+
+    private void SetNoCache()
+    {
+        var headers = Response.GetTypedHeaders();
+        headers.CacheControl = new CacheControlHeaderValue
+        {
+            NoCache = true,
+            NoStore = true,
+            MustRevalidate = true
+        };
+        Response.Headers[HeaderNames.Pragma] = "no-cache";
+        Response.Headers[HeaderNames.Expires] = "0";
+    }
+
+    // App version endpoints
+    private const string VersionDir = "builds";
+    private const string ManifestName = "manifest.json";
+
+    [HttpGet("app-version")]
+    public IActionResult GetAppVersion()
+    {
+        var manifest = ReadManifest();
+        if (manifest == null) return NotFound();
+        SetNoCache();
+        return Ok(manifest);
+    }
+
+    [HttpPost("app-version/upload")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(1_500_000_000)]
+    public async Task<IActionResult> UploadAppVersion([FromForm] AppVersionUpload data)
+    {
+        try
+        {
+            var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+            var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+            var dir = Path.Combine(webroot, VersionDir);
+            Directory.CreateDirectory(dir);
+            var ext = Path.GetExtension(data.File.FileName);
+            if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+            var storedName = $"{Guid.NewGuid():N}{ext}";
+            var path = Path.Combine(dir, storedName);
+            await using (var fs = System.IO.File.Create(path))
+            {
+                await data.File.CopyToAsync(fs);
+            }
+            string sha256;
+            await using (var fs = System.IO.File.OpenRead(path))
+            {
+                using var sha = SHA256.Create();
+                sha256 = Convert.ToHexString(sha.ComputeHash(fs));
+            }
+            var size = new FileInfo(path).Length;
+            var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+            var fileUrl = $"{baseUrl}/{VersionDir}/{storedName}";
+            var info = new AppVersionInfo
+            {
+                Version = data.Version,
+                FileName = data.File.FileName,
+                FileUrl = fileUrl,
+                Size = size,
+                Sha256 = sha256,
+                ContentType = data.File.ContentType,
+                UploadedAt = DateTimeOffset.UtcNow
+            };
+            var manifestPath = Path.Combine(dir, ManifestName);
+            await System.IO.File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(info));
+            SetNoCache();
+            return Ok(info);
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message);
+        }
+    }
+
+    [HttpGet("app-version/download")]
+    public IActionResult DownloadAppVersion()
+    {
+        var manifest = ReadManifest();
+        if (manifest == null) return NotFound();
+        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        var dir = Path.Combine(webroot, VersionDir);
+        var fileName = manifest.FileUrl.Split('/').Last();
+        var path = Path.Combine(dir, fileName);
+        if (!System.IO.File.Exists(path)) return NotFound();
+        SetNoCache();
+        return PhysicalFile(path, manifest.ContentType, manifest.FileName, enableRangeProcessing: true);
+    }
+
+    [HttpHead("app-version/download")]
+    public IActionResult HeadAppVersion()
+    {
+        var manifest = ReadManifest();
+        if (manifest == null) return NotFound();
+        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        var dir = Path.Combine(webroot, VersionDir);
+        var fileName = manifest.FileUrl.Split('/').Last();
+        var path = Path.Combine(dir, fileName);
+        if (!System.IO.File.Exists(path)) return NotFound();
+        var fi = new FileInfo(path);
+        Response.ContentLength = fi.Length;
+        Response.ContentType = manifest.ContentType;
+        Response.Headers["X-SHA256"] = manifest.Sha256;
+        SetNoCache();
+        return Ok();
+    }
+
+    private AppVersionInfo? ReadManifest()
+    {
+        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        var path = Path.Combine(webroot, VersionDir, ManifestName);
+        if (!System.IO.File.Exists(path)) return null;
+        var json = System.IO.File.ReadAllText(path);
+        return JsonSerializer.Deserialize<AppVersionInfo>(json);
+    }
+}
