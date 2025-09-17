@@ -46,7 +46,7 @@ CREATE TABLE Notifications (
 ```
 
 ### 2.3 Quản lý dữ liệu
-Ngay sau khi migration được áp dụng, hệ thống không tự thêm dữ liệu mẫu. Admin chủ động tạo bản ghi `AppVersions` và `Notifications` thông qua dashboard, migration seed riêng hoặc script phù hợp với quy trình vận hành của bạn.
+Ngay sau khi migration được áp dụng, hệ thống không tự thêm dữ liệu mẫu. Admin có thể tạo bản ghi `AppVersions` và `Notifications` thông qua dashboard, script riêng hoặc trực tiếp gọi API quản trị (`POST /api/control/app-versions`, `POST /api/control/send-notification*`).
 
 ## 3. Luồng chính
 1. **Admin phát hành bản mới**
@@ -86,6 +86,8 @@ curl -X POST "https://<host>/api/control/send-notification-json" \
   -d '{
         "title": "🔧 Bảo trì hệ thống",
         "body": "Hệ thống bảo trì lúc 23h ngày 20/09",
+        "link": "https://status.myapp.com/maintenance",
+        "appVersionId": null,
         "fileBase64": null,
         "fileName": null
       }'
@@ -103,6 +105,7 @@ curl -X POST "https://<host>/api/control/send-notification-json" \
   }
 }
 ```
+Các trường `link` và `appVersionId` là tuỳ chọn: nếu không cần chuyển hướng hay gắn với bản cập nhật cụ thể, hãy đặt `null`/bỏ qua.
 
 #### Gửi thông báo multipart (đính kèm tệp)
 ```
@@ -113,8 +116,11 @@ Content-Type: multipart/form-data
 curl -X POST "https://<host>/api/control/send-notification" \
   -F "title=🎯 Khuyến mãi" \
   -F "body=Giảm 30% cho người dùng mới" \
+  -F "link=https://status.myapp.com/promo" \
+  -F "appVersionId=3" \
   -F "file=@banner.png"
 ```
+Chỉ gửi các trường `link`, `appVersionId`, `file` khi thật sự cần thiết; mọi trường khác đều là bắt buộc.
 
 #### Xoá toàn bộ thông báo
 ```bash
@@ -139,6 +145,42 @@ curl -X POST "https://<host>/api/control/app-version/upload" \
   -F "file=@app-release.apk"
 ```
 Phản hồi chứa thông tin file được lưu, checksum SHA256 và build number mới.
+
+#### Tạo bản phát hành trong bảng AppVersions (JSON)
+```text
+POST /api/control/app-versions
+Content-Type: application/json
+```
+```bash
+curl -X POST "https://<host>/api/control/app-versions" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "versionName": "1.3.0",
+        "releaseNotes": "Bổ sung tính năng A, cải thiện hiệu năng",
+        "fileUrl": "https://cdn.myapp.com/app/v1.3.0.apk",
+        "fileChecksum": "de305d5475b4431b93285f8b8f66ccf3",
+        "releaseDate": "2025-10-01T09:00:00Z"
+      }'
+```
+`releaseDate` chấp nhận chuỗi ISO8601; nếu không chỉ rõ múi giờ, hệ thống sẽ mặc định coi là UTC.
+
+**Phản hồi mẫu**
+```json
+{
+  "appVersionId": 4,
+  "versionName": "1.3.0",
+  "releaseNotes": "Bổ sung tính năng A, cải thiện hiệu năng",
+  "fileUrl": "https://cdn.myapp.com/app/v1.3.0.apk",
+  "fileChecksum": "de305d5475b4431b93285f8b8f66ccf3",
+  "releaseDate": "2025-10-01T09:00:00Z"
+}
+```
+
+#### Liệt kê các bản phát hành hiện có
+```bash
+curl "https://<host>/api/control/app-versions"
+```
+Máy chủ trả về danh sách được sắp xếp theo `releaseDate` mới nhất trước.
 
 ### 4.2 API cho Client/App
 

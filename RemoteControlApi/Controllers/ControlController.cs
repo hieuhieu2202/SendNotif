@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -167,8 +168,14 @@ public class ControlController : ControllerBase
                 {
                     Id = string.IsNullOrWhiteSpace(form["id"]) ? null : form["id"].ToString(),
                     Title = form["title"],
-                    Body = form["body"]
+                    Body = form["body"],
+                    Link = string.IsNullOrWhiteSpace(form["link"]) ? null : form["link"].ToString().Trim()
                 };
+
+                if (int.TryParse(form["appVersionId"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedVersionId))
+                {
+                    msg.AppVersionId = parsedVersionId;
+                }
 
                 // file là tuỳ chọn
                 var file = form.Files.GetFile("file");
@@ -224,6 +231,20 @@ public class ControlController : ControllerBase
     private async Task<IActionResult> HandleNotificationAsync(NotificationMessage message)
     {
         if (!TryValidateModel(message)) return ValidationProblem(ModelState);
+        message.Link = string.IsNullOrWhiteSpace(message.Link) ? null : message.Link.Trim();
+
+        if (message.AppVersionId.HasValue)
+        {
+            var exists = await _dbContext.AppVersions
+                .AsNoTracking()
+                .AnyAsync(v => v.AppVersionId == message.AppVersionId.Value);
+            if (!exists)
+            {
+                ModelState.AddModelError(nameof(NotificationMessage.AppVersionId), "AppVersionId không tồn tại.");
+                return ValidationProblem(ModelState);
+            }
+        }
+
         message.TimestampUtc = DateTimeOffset.UtcNow;
         message.Id = string.IsNullOrWhiteSpace(message.Id)
             ? Guid.NewGuid().ToString("n")
@@ -241,6 +262,8 @@ public class ControlController : ControllerBase
             Title = message.Title,
             Message = message.Body,
             CreatedAt = message.TimestampUtc.UtcDateTime,
+            Link = message.Link,
+            AppVersionId = message.AppVersionId,
             FileUrl = message.FileUrl,
             IsActive = true
         };
@@ -398,6 +421,112 @@ public class ControlController : ControllerBase
                 latestVersion.ReleaseDate
             }
         });
+    }
+
+    [HttpGet("app-versions")]
+    public async Task<IActionResult> ListAppVersions()
+    {
+        var versions = await _dbContext.AppVersions
+            .AsNoTracking()
+            .OrderByDescending(v => v.ReleaseDate)
+            .ThenByDescending(v => v.AppVersionId)
+            .Select(v => new
+            {
+                v.AppVersionId,
+                v.VersionName,
+                v.ReleaseNotes,
+                v.FileUrl,
+                v.FileChecksum,
+                v.ReleaseDate
+            })
+            .ToListAsync();
+
+        SetNoCache();
+        return Ok(versions);
+    }
+
+    [HttpGet("app-versions/{id:int}")]
+    public async Task<IActionResult> GetAppVersionById(int id)
+    {
+        var version = await _dbContext.AppVersions
+            .AsNoTracking()
+            .Where(v => v.AppVersionId == id)
+            .Select(v => new
+            {
+                v.AppVersionId,
+                v.VersionName,
+                v.ReleaseNotes,
+                v.FileUrl,
+                v.FileChecksum,
+                v.ReleaseDate
+            })
+            .FirstOrDefaultAsync();
+
+        if (version is null)
+        {
+            return NotFound();
+        }
+
+        SetNoCache();
+        return Ok(version);
+    }
+
+    [HttpPost("app-versions")]
+    public async Task<IActionResult> CreateAppVersion([FromBody] CreateAppVersionRequest request)
+    {
+        request.VersionName = request.VersionName?.Trim() ?? string.Empty;
+        request.FileUrl = request.FileUrl?.Trim() ?? string.Empty;
+        request.ReleaseNotes = string.IsNullOrWhiteSpace(request.ReleaseNotes)
+            ? null
+            : request.ReleaseNotes.Trim();
+        request.FileChecksum = string.IsNullOrWhiteSpace(request.FileChecksum)
+            ? null
+            : request.FileChecksum.Trim();
+
+        if (!TryValidateModel(request)) return ValidationProblem(ModelState);
+
+        var releaseDate = request.ReleaseDate;
+        if (releaseDate.Kind == DateTimeKind.Unspecified)
+        {
+            releaseDate = DateTime.SpecifyKind(releaseDate, DateTimeKind.Utc);
+        }
+        else if (releaseDate.Kind == DateTimeKind.Local)
+        {
+            releaseDate = releaseDate.ToUniversalTime();
+        }
+
+        var duplicate = await _dbContext.AppVersions
+            .AnyAsync(v => v.VersionName == request.VersionName);
+        if (duplicate)
+        {
+            ModelState.AddModelError(nameof(request.VersionName), "VersionName đã tồn tại.");
+            return ValidationProblem(ModelState);
+        }
+
+        var entity = new AppVersion
+        {
+            VersionName = request.VersionName,
+            ReleaseNotes = request.ReleaseNotes,
+            FileUrl = request.FileUrl,
+            FileChecksum = request.FileChecksum,
+            ReleaseDate = releaseDate
+        };
+
+        _dbContext.AppVersions.Add(entity);
+        await _dbContext.SaveChangesAsync();
+
+        var response = new
+        {
+            entity.AppVersionId,
+            entity.VersionName,
+            entity.ReleaseNotes,
+            entity.FileUrl,
+            entity.FileChecksum,
+            entity.ReleaseDate
+        };
+
+        SetNoCache();
+        return CreatedAtAction(nameof(GetAppVersionById), new { id = entity.AppVersionId }, response);
     }
 
     [HttpPost("app-version/upload")]
