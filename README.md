@@ -83,6 +83,8 @@ Content-Type: application/json
 }
 ```
 
+> **Lưu ý:** Khi gửi file dạng JSON, trường `fileBase64` phải là chuỗi Base64 hợp lệ và đi kèm với `fileName`. Nếu không có nhu cầu gửi file, hãy bỏ trống cả hai trường này.
+
 Retrieve messages:
 
 ```

@@ -30,10 +30,12 @@ public class ControlController : ControllerBase
     {
         try
         {
-            if (!string.IsNullOrWhiteSpace(msg.FileBase64) && !string.IsNullOrWhiteSpace(msg.FileName))
+            var base64Result = await TryPersistBase64Async(msg);
+            if (!base64Result.Success)
             {
-                await SaveBase64(msg);
+                return BadRequest(new { error = base64Result.Error });
             }
+
             return Handle(msg);
         }
         catch (Exception ex)
@@ -138,20 +140,41 @@ public class ControlController : ControllerBase
         msg.FileUrl = $"{baseUrl}/uploads/{fileName}";
     }
 
-    private async Task SaveBase64(NotificationMessage msg)
+    private async Task<(bool Success, string? Error)> TryPersistBase64Async(NotificationMessage msg)
     {
-        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-        var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-        var uploads = Path.Combine(webroot, "uploads");
-        Directory.CreateDirectory(uploads);
-        var ext = Path.GetExtension(msg.FileName);
-        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
-        var fileName = $"{Guid.NewGuid():N}{ext}";
-        var fullPath = Path.Combine(uploads, fileName);
-        var bytes = Convert.FromBase64String(msg.FileBase64!);
-        await System.IO.File.WriteAllBytesAsync(fullPath, bytes);
-        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
-        msg.FileUrl = $"{baseUrl}/uploads/{fileName}";
+        var hasBase64 = !string.IsNullOrWhiteSpace(msg.FileBase64);
+        var hasFileName = !string.IsNullOrWhiteSpace(msg.FileName);
+
+        if (!hasBase64 && !hasFileName)
+        {
+            return (true, null); // Nothing to persist.
+        }
+
+        if (!hasBase64 || !hasFileName)
+        {
+            return (false, "Cần cung cấp cả fileBase64 và fileName khi muốn gửi file.");
+        }
+
+        try
+        {
+            var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+            var webroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+            var uploads = Path.Combine(webroot, "uploads");
+            Directory.CreateDirectory(uploads);
+            var ext = Path.GetExtension(msg.FileName);
+            if (string.IsNullOrWhiteSpace(ext) || ext.Length > 10) ext = ".bin";
+            var fileName = $"{Guid.NewGuid():N}{ext}";
+            var fullPath = Path.Combine(uploads, fileName);
+            var bytes = Convert.FromBase64String(msg.FileBase64!);
+            await System.IO.File.WriteAllBytesAsync(fullPath, bytes);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+            msg.FileUrl = $"{baseUrl}/uploads/{fileName}";
+            return (true, null);
+        }
+        catch (FormatException)
+        {
+            return (false, "fileBase64 không hợp lệ. Hãy đảm bảo chuỗi được mã hóa Base64 chính xác hoặc bỏ trống trường file.");
+        }
     }
 
     private IActionResult Handle(NotificationMessage msg)
