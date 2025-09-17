@@ -97,6 +97,38 @@
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
+        .app-version-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .app-version-row select {
+            flex: 1 1 240px;
+            min-width: 220px;
+        }
+
+        .app-version-row button {
+            padding: 10px 18px;
+            border-radius: 10px;
+        }
+
+        .app-version-hint {
+            margin-top: 6px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(37, 99, 235, 0.06);
+            color: var(--muted);
+            font-size: 0.875rem;
+            white-space: pre-line;
+        }
+
+        .app-version-hint strong {
+            color: var(--text);
+        }
+
         .field textarea {
             min-height: 150px;
             resize: vertical;
@@ -286,9 +318,15 @@
                         <small>Nếu cần chuyển người dùng đến trang chi tiết, hãy nhập URL đầy đủ tại đây.</small>
                     </div>
                     <div class="field">
-                        <label for="appVersionId">App Version ID (tuỳ chọn)</label>
-                        <input type="number" id="appVersionId" name="appVersionId" min="1" step="1" />
-                        <small>Nhập ID bản cập nhật trong bảng <code>AppVersions</code> để gắn thông báo với phiên bản ứng dụng. Bỏ trống nếu không dùng, hệ thống sẽ tự loại bỏ trường này khỏi request.</small>
+                        <label for="appVersionId">App Version (tuỳ chọn)</label>
+                        <div class="app-version-row">
+                            <select id="appVersionId" name="appVersionId">
+                                <option value="">Không gắn với bản cập nhật</option>
+                            </select>
+                            <button type="button" id="refreshAppVersions">Tải danh sách</button>
+                        </div>
+                        <small>Nhấn "Tải danh sách" để lấy các bản phát hành từ <code>/api/control/app-versions</code>. Nếu chưa tạo bản phát hành, hãy thêm trước rồi quay lại chọn ở đây.</small>
+                        <div class="app-version-hint" id="appVersionDetails">Chưa chọn bản cập nhật.</div>
                     </div>
                 </div>
 
@@ -344,13 +382,17 @@
         const titleInput = document.getElementById('title');
         const bodyInput = document.getElementById('body');
         const linkInput = document.getElementById('link');
-        const appVersionInput = document.getElementById('appVersionId');
+        const appVersionSelect = document.getElementById('appVersionId');
+        const refreshAppVersionsBtn = document.getElementById('refreshAppVersions');
+        const appVersionDetails = document.getElementById('appVersionDetails');
         const fileInput = document.getElementById('file');
         const submitBtn = document.getElementById('submitBtn');
         const resetBtn = document.getElementById('resetBtn');
         const statusLine = document.getElementById('statusLine');
         const requestPreview = document.getElementById('requestPreview');
         const responsePreview = document.getElementById('responsePreview');
+
+        let appVersionMap = new Map();
 
         const defaultBase = window.location.origin;
         baseUrlInput.value = defaultBase;
@@ -369,14 +411,7 @@
             const title = titleInput.value.trim();
             const body = bodyInput.value.trim();
             const link = linkInput.value.trim();
-            const appVersionRaw = appVersionInput.value.trim();
-            let previewAppVersionId = null;
-            if (appVersionRaw) {
-                const parsed = Number(appVersionRaw);
-                if (Number.isInteger(parsed) && parsed > 0) {
-                    previewAppVersionId = parsed;
-                }
-            }
+            const appVersionId = getSelectedAppVersionId();
             const file = fileInput.files?.[0];
 
             if (payloadType === 'json') {
@@ -388,11 +423,11 @@
                     fileName: file ? file.name : null,
                     fileBase64: file ? '(sẽ được sinh tự động khi gửi)' : null
                 };
-                if (previewAppVersionId !== null) {
-                    previewObj.appVersionId = previewAppVersionId;
+                if (appVersionId !== null) {
+                    previewObj.appVersionId = appVersionId;
                 }
                 let previewJson = JSON.stringify(previewObj, null, 2);
-                if (previewAppVersionId === null) {
+                if (appVersionId === null) {
                     previewJson += '\n// appVersionId sẽ không được gửi vì bạn để trống';
                 }
                 requestPreview.textContent = previewJson;
@@ -405,10 +440,129 @@
                     ` • body = ${body || '(trống)'}`,
                     ` • id = ${id || '(không gửi)'}`,
                     ` • link = ${link || '(không gửi)'}`,
-                    previewAppVersionId !== null ? ` • appVersionId = ${previewAppVersionId}` : ' • appVersionId = (không gửi)',
+                    appVersionId !== null ? ` • appVersionId = ${appVersionId}` : ' • appVersionId = (không gửi)',
                     file ? ` • file = ${file.name} (${Math.round(file.size / 1024)} KB)` : ' • file = (không gửi)'
                 ];
                 requestPreview.textContent = lines.join('\n');
+            }
+        }
+
+        function getSelectedAppVersionId() {
+            const raw = appVersionSelect.value.trim();
+            if (!raw) return null;
+            const parsed = Number(raw);
+            if (!Number.isInteger(parsed) || parsed <= 0) return null;
+            return parsed;
+        }
+
+        function updateAppVersionDetails() {
+            const selected = appVersionSelect.value.trim();
+            if (!selected) {
+                if (appVersionMap.size === 0) {
+                    appVersionDetails.textContent = 'Chưa có bản phát hành nào. Hãy dùng API /api/control/app-versions để tạo trước.';
+                } else {
+                    appVersionDetails.textContent = 'Chưa chọn bản cập nhật. Thông báo sẽ được gửi như thông báo thường.';
+                }
+                return;
+            }
+
+            const info = appVersionMap.get(selected);
+            if (!info) {
+                appVersionDetails.textContent = `ID ${selected} chưa nằm trong danh sách. Nhấn "Tải danh sách" để cập nhật dữ liệu mới nhất.`;
+                return;
+            }
+
+            const lines = [
+                `ID #${info.id} · ${info.versionName}`
+            ];
+
+            if (info.releaseDate) {
+                const dt = new Date(info.releaseDate);
+                if (!Number.isNaN(dt.getTime())) {
+                    lines.push('Phát hành: ' + dt.toLocaleString());
+                }
+            }
+
+            if (info.releaseNotes) {
+                lines.push('Ghi chú: ' + info.releaseNotes);
+            }
+
+            if (info.fileUrl) {
+                lines.push('File: ' + info.fileUrl);
+            }
+
+            appVersionDetails.textContent = lines.join('\n');
+        }
+
+        async function loadAppVersions(showFeedback = true) {
+            const baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
+            if (!baseUrl) {
+                if (showFeedback) {
+                    statusLine.textContent = 'Vui lòng nhập địa chỉ máy chủ trước khi tải danh sách phiên bản.';
+                    statusLine.className = 'status-line error';
+                }
+                return;
+            }
+
+            const previousValue = appVersionSelect.value;
+            refreshAppVersionsBtn.disabled = true;
+            refreshAppVersionsBtn.textContent = 'Đang tải...';
+            appVersionSelect.disabled = true;
+
+            try {
+                const response = await fetch(`${baseUrl}/api/control/app-versions`);
+                if (!response.ok) {
+                    throw new Error(`${response.status} ${response.statusText}`);
+                }
+
+                const raw = await response.json();
+                const list = Array.isArray(raw) ? raw : [];
+
+                appVersionMap = new Map();
+                appVersionSelect.innerHTML = '';
+                const defaultOption = new Option('Không gắn với bản cập nhật', '');
+                appVersionSelect.appendChild(defaultOption);
+
+                for (const item of list) {
+                    const idValue = item?.appVersionId ?? item?.AppVersionId;
+                    if (!idValue) continue;
+                    const value = String(idValue);
+                    const versionName = item?.versionName ?? item?.VersionName ?? `Phiên bản #${value}`;
+                    const option = new Option(`${versionName} (#${value})`, value);
+                    appVersionSelect.appendChild(option);
+                    appVersionMap.set(value, {
+                        id: value,
+                        versionName,
+                        releaseNotes: item?.releaseNotes ?? item?.ReleaseNotes ?? '',
+                        fileUrl: item?.fileUrl ?? item?.FileUrl ?? '',
+                        releaseDate: item?.releaseDate ?? item?.ReleaseDate ?? ''
+                    });
+                }
+
+                if (previousValue && appVersionMap.has(previousValue)) {
+                    appVersionSelect.value = previousValue;
+                }
+
+                updateAppVersionDetails();
+                buildPreview();
+
+                if (showFeedback) {
+                    statusLine.textContent = `Đã tải ${appVersionMap.size} bản phát hành.`;
+                    statusLine.className = 'status-line';
+                }
+            } catch (error) {
+                appVersionMap = new Map();
+                appVersionSelect.innerHTML = '';
+                appVersionSelect.appendChild(new Option('Không gắn với bản cập nhật', ''));
+                updateAppVersionDetails();
+                if (showFeedback) {
+                    statusLine.textContent = 'Không tải được danh sách phiên bản: ' + (error?.message || error);
+                    statusLine.className = 'status-line error';
+                }
+            } finally {
+                refreshAppVersionsBtn.disabled = false;
+                refreshAppVersionsBtn.textContent = 'Tải danh sách';
+                appVersionSelect.disabled = false;
             }
         }
 
@@ -448,14 +602,7 @@
             const title = titleInput.value.trim();
             const body = bodyInput.value.trim();
             const link = linkInput.value.trim();
-            const appVersionRaw = appVersionInput.value.trim();
-            let appVersionId = null;
-            if (appVersionRaw) {
-                const parsed = Number(appVersionRaw);
-                if (Number.isInteger(parsed) && parsed > 0) {
-                    appVersionId = parsed;
-                }
-            }
+            const appVersionId = getSelectedAppVersionId();
             const file = fileInput.files?.[0];
 
             submitBtn.disabled = true;
@@ -563,13 +710,21 @@
         form.addEventListener('submit', sendNotification);
         resetBtn.addEventListener('click', resetForm);
 
-        [baseUrlInput, idInput, titleInput, bodyInput, linkInput, appVersionInput].forEach(input => {
+        [baseUrlInput, idInput, titleInput, bodyInput, linkInput].forEach(input => {
             input.addEventListener('input', buildPreview);
         });
+        appVersionSelect.addEventListener('change', () => {
+            updateAppVersionDetails();
+            buildPreview();
+        });
+        refreshAppVersionsBtn.addEventListener('click', () => loadAppVersions(true));
+        baseUrlInput.addEventListener('change', () => loadAppVersions(false));
         Array.from(payloadTypeInputs).forEach(r => r.addEventListener('change', buildPreview));
         fileInput.addEventListener('change', buildPreview);
 
         buildPreview();
+        updateAppVersionDetails();
+        loadAppVersions(false);
     </script>
 </body>
 </html>

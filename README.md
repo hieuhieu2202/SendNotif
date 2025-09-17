@@ -182,6 +182,11 @@ curl "https://<host>/api/control/app-versions"
 ```
 Máy chủ trả về danh sách được sắp xếp theo `releaseDate` mới nhất trước.
 
+#### Giao diện gửi thông báo thủ công
+- Mở trình duyệt tới `https://<host>/send.html`.
+- Nhập `Máy chủ API` rồi bấm **Tải danh sách** để lấy danh sách `AppVersions` hiện có; nếu bảng trống, cần tạo bản phát hành qua API trước.
+- Chọn bản cập nhật cần gắn hoặc để trống để gửi thông báo thường, sau đó hoàn thiện nội dung và nhấn **Gửi thông báo**. Preview bên trái sẽ hiển thị chính xác payload được gửi đi.
+
 ### 4.2 API cho Client/App
 
 #### Lấy danh sách thông báo (có phân trang)
