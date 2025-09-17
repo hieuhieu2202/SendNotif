@@ -1,126 +1,1151 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <title>Notifications</title>
+    <title>Trung tâm theo dõi thông báo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f5f5f8;
+            --card: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #059669;
+            --warning: #f59e0b;
+            --danger: #dc2626;
+            font-size: 16px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --card: #1e293b;
+                --text: #f8fafc;
+                --muted: #cbd5f5;
+                --border: #334155;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: system-ui, Arial, sans-serif;
-            margin: 24px;
+            margin: 0;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
 
-        ul {
-            padding-left: 18px;
+        main {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px 20px 80px;
+            display: grid;
+            gap: 24px;
         }
 
-        li {
-            margin: 10px 0;
+        header h1 {
+            margin: 0 0 10px;
+            font-size: clamp(1.75rem, 1.2rem + 1.5vw, 2.4rem);
         }
 
-        .preview-container {
-            margin-top: 6px;
+        header p {
+            margin: 0;
+            color: var(--muted);
+            max-width: 760px;
+            line-height: 1.55;
         }
 
-        img, video, iframe {
-            max-width: 560px;
-            max-height: 340px;
-            display: block;
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+            padding: 24px;
+        }
+
+        .controls-grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        @media (min-width: 768px) {
+            .controls-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .field label {
+            font-weight: 600;
+        }
+
+        .field input[type="text"],
+        .field input[type="url"],
+        .field input[type="search"],
+        .field select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: inherit;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .field input[type="text"]:focus,
+        .field input[type="url"]:focus,
+        .field input[type="search"]:focus,
+        .field select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+        }
+
+        .field small {
+            color: var(--muted);
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .checkbox-field {
+            align-content: start;
+        }
+
+        .checkbox-field label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .checkbox-field input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--primary);
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 11px 22px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        button.primary {
+            background: linear-gradient(120deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+        }
+
+        button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 35px rgba(37, 99, 235, 0.45);
+        }
+
+        button.ghost {
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--primary);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .status-line {
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        .layout {
+            display: grid;
+            gap: 24px;
+        }
+
+        @media (min-width: 1024px) {
+            .layout {
+                grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+                align-items: start;
+            }
+        }
+
+        .list-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .list-header h2 {
+            margin: 0;
+            font-size: 1.35rem;
+        }
+
+        .list-header p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .list-stats {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--primary);
+        }
+
+        .badge.alert {
+            background: rgba(245, 158, 11, 0.16);
+            color: var(--warning);
+        }
+
+        .badge.success {
+            background: rgba(5, 150, 105, 0.18);
+            color: var(--success);
+        }
+
+        .notification-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .notification-card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            background: rgba(148, 163, 184, 0.04);
+            cursor: pointer;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .notification-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .notification-card:hover {
+            border-color: rgba(37, 99, 235, 0.45);
+            transform: translateY(-1px);
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+        }
+
+        .notification-card.selected {
+            border-color: rgba(37, 99, 235, 0.7);
+            box-shadow: 0 12px 34px rgba(37, 99, 235, 0.18);
+            background: rgba(37, 99, 235, 0.08);
+        }
+
+        .notification-card h3 {
+            margin: 0 0 6px;
+            font-size: 1.15rem;
+        }
+
+        .notification-card__meta {
+            margin: 0 0 12px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .notification-card__body {
+            margin: 0 0 12px;
+            line-height: 1.55;
+        }
+
+        .notification-card__footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chip {
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            font-size: 0.88rem;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .pagination {
+            margin-top: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pagination span {
+            font-weight: 600;
+        }
+
+        .detail-card {
+            min-height: 320px;
+            display: grid;
+            gap: 16px;
+        }
+
+        .detail-empty {
+            text-align: center;
+            color: var(--muted);
+            display: grid;
+            gap: 8px;
+            justify-items: center;
+            padding: 24px 0;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .detail-header h2 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .detail-time {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .detail-message {
+            margin: 12px 0;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .detail-links {
+            display: grid;
+            gap: 10px;
+        }
+
+        .detail-links a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .detail-links a:hover {
+            text-decoration: underline;
+        }
+
+        .preview {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .preview img,
+        .preview video,
+        .preview audio,
+        .preview iframe {
+            max-width: 100%;
+            border-radius: 10px;
+        }
+
+        .version-box {
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            border-radius: 12px;
+            padding: 14px;
+            background: rgba(37, 99, 235, 0.07);
+            display: grid;
+            gap: 8px;
+        }
+
+        .version-box h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .code-block {
+            background: rgba(15, 23, 42, 0.85);
+            color: #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            overflow: auto;
+            font-size: 0.92rem;
+            margin: 0;
+        }
+
+        .version-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .version-form input[type="text"] {
+            flex: 1 1 200px;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        #liveStatus[data-state="connected"] {
+            color: var(--success);
+        }
+
+        #liveStatus[data-state="error"] {
+            color: var(--danger);
+        }
+
+        #liveStatus[data-state="connecting"] {
+            color: var(--warning);
+        }
+
+        .empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--muted);
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+        }
+
+        @media (max-width: 480px) {
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Notifications</h1>
-    <ul id="list"></ul>
+    <main>
+        <header>
+            <h1>Trung tâm theo dõi thông báo</h1>
+            <p>
+                Trang này giúp bạn xem lại lịch sử thông báo từ API, theo dõi realtime bằng Server-Sent Events và kiểm tra
+                phiên bản ứng dụng mới nhất. Dữ liệu hiển thị mặc định chỉ gồm các bản ghi đang bật (<code>IsActive = 1</code>).
+            </p>
+        </header>
+
+        <section class="card">
+            <div class="field">
+                <label for="baseUrl">Máy chủ API</label>
+                <input type="url" id="baseUrl" placeholder="https://your-domain" required />
+                <small>Đường dẫn gốc tới dịch vụ. Ví dụ: <code>https://api.myapp.com</code>. Hệ thống sẽ tự ghép với các
+                    endpoint tương ứng.</small>
+            </div>
+
+            <div class="controls-grid">
+                <div class="field">
+                    <label for="pageSize">Số thông báo mỗi trang</label>
+                    <select id="pageSize">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="searchTerm">Tìm kiếm nhanh</label>
+                    <input type="search" id="searchTerm" placeholder="Nhập tiêu đề, nội dung hoặc phiên bản..." />
+                    <small>Bộ lọc áp dụng trên dữ liệu của trang hiện tại.</small>
+                </div>
+                <div class="field checkbox-field">
+                    <label>
+                        <input type="checkbox" id="autoRefresh" />
+                        <span>Tự làm mới sau mỗi 30 giây</span>
+                    </label>
+                    <small>Bật khi cần giám sát liên tục nhưng không muốn dùng realtime SSE.</small>
+                </div>
+                <div class="field checkbox-field">
+                    <label>
+                        <input type="checkbox" id="liveToggle" />
+                        <span>Kết nối realtime (Server-Sent Events)</span>
+                    </label>
+                    <small id="liveStatus" data-state="idle">Đang tắt.</small>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="button" id="refreshBtn" class="primary">Tải lại danh sách</button>
+                <button type="button" id="clearSearch" class="ghost">Xoá tìm kiếm</button>
+                <span class="status-line" id="lastUpdated">Chưa tải dữ liệu.</span>
+            </div>
+        </section>
+
+        <section class="layout">
+            <section class="card list-card">
+                <div class="list-header">
+                    <div>
+                        <h2>Danh sách thông báo</h2>
+                        <p>Nhấn vào từng bản ghi để xem chi tiết ở panel bên cạnh.</p>
+                    </div>
+                    <div class="list-stats">
+                        <span id="totalCount">0 thông báo</span>
+                        <span class="badge alert" id="newBadge" hidden>Thông báo mới</span>
+                    </div>
+                </div>
+
+                <div id="notificationList" class="notification-list">
+                    <div class="empty">Chưa có dữ liệu.</div>
+                </div>
+
+                <div class="pagination">
+                    <button type="button" id="prevPage" class="ghost">Trang trước</button>
+                    <span id="pageInfo">Trang 1/1</span>
+                    <button type="button" id="nextPage" class="ghost">Trang sau</button>
+                </div>
+            </section>
+
+            <aside class="card detail-card" id="detailPanel">
+                <div class="detail-empty">
+                    <h2>Chi tiết thông báo</h2>
+                    <p>Chọn một bản ghi ở danh sách bên trái để xem nội dung chi tiết, tệp đính kèm và phiên bản ứng dụng
+                        (nếu có).</p>
+                </div>
+            </aside>
+        </section>
+
+        <section class="card version-card">
+            <h2>Kiểm tra phiên bản ứng dụng</h2>
+            <p class="muted">Nhập phiên bản hiện tại trên thiết bị để so sánh với bản phát hành mới nhất từ máy chủ.</p>
+            <form id="versionForm" class="version-form" novalidate>
+                <input type="text" id="currentVersion" placeholder="Ví dụ: 1.2.3" required />
+                <button type="submit" class="primary">Kiểm tra</button>
+                <button type="button" id="copyVersionResult" class="ghost" disabled>Sao chép JSON</button>
+            </form>
+            <pre id="versionResult" class="code-block">Chưa có yêu cầu.</pre>
+        </section>
+    </main>
 
     <script>
-        const list = document.getElementById('list');
+        const baseInput = document.getElementById('baseUrl');
+        const pageSizeSelect = document.getElementById('pageSize');
+        const searchInput = document.getElementById('searchTerm');
+        const autoRefreshToggle = document.getElementById('autoRefresh');
+        const liveToggle = document.getElementById('liveToggle');
+        const liveStatus = document.getElementById('liveStatus');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const lastUpdated = document.getElementById('lastUpdated');
+        const listContainer = document.getElementById('notificationList');
+        const totalCount = document.getElementById('totalCount');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const newBadge = document.getElementById('newBadge');
+        const detailPanel = document.getElementById('detailPanel');
+        const versionForm = document.getElementById('versionForm');
+        const currentVersionInput = document.getElementById('currentVersion');
+        const versionResult = document.getElementById('versionResult');
+        const copyVersionBtn = document.getElementById('copyVersionResult');
 
-        // Luôn build URL dựa trên vị trí hiện tại (tự bao gồm /SendNoti nếu có)
-        const urlFrom = (path) => new URL(path, window.location).toString();
+        const defaultBase = window.location.origin;
+        baseInput.value = defaultBase;
 
-        function add(n) {
-            if (n.message) n = n.message; // server đang bọc { status, message }
-            const li = document.createElement('li');
+        const state = {
+            page: 1,
+            pageSize: Number(pageSizeSelect.value) || 50,
+            total: 0,
+            items: [],
+            selectedId: null,
+            selected: null,
+            hasUnseen: false
+        };
 
-            const title = n.title ?? n.Title ?? '';
-            const body = n.body ?? n.Body ?? '';
-            li.textContent = `${title}: ${body}`;
+        let autoRefreshTimer = null;
+        let eventSource = null;
+        let lastVersionPayload = '';
 
-            const url = n.fileUrl ?? n.FileUrl;
-            if (url) {
-                const previewBtn = document.createElement('button');
-                previewBtn.textContent = 'Preview';
+        function normalizeBase(value) {
+            const trimmed = (value || '').trim();
+            if (!trimmed) {
+                return defaultBase;
+            }
+            try {
+                const url = new URL(trimmed, window.location.href);
+                return url.origin + url.pathname.replace(/\/?$/, '');
+            } catch {
+                return defaultBase;
+            }
+        }
 
-                const downloadLink = document.createElement('a');
-                downloadLink.href = urlFrom(url); // chuẩn hoá URL (kể cả trường hợp server trả bắt đầu bằng "/")
-                const lowerUrl = downloadLink.href.toLowerCase();
-                downloadLink.textContent = lowerUrl.endsWith('.apk') ? 'Install APK' : 'Download';
-                downloadLink.download = '';
-                downloadLink.target = '_blank';
-                downloadLink.style.marginLeft = '8px';
+        function resolveApi(path) {
+            const base = normalizeBase(baseInput.value);
+            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+            return new URL(cleanPath, base + '/').toString();
+        }
 
-                li.appendChild(previewBtn);
-                li.appendChild(downloadLink);
+        function resolveResource(path) {
+            try {
+                return new URL(path, normalizeBase(baseInput.value) + '/').toString();
+            } catch {
+                return path;
+            }
+        }
 
-                const preview = document.createElement('div');
-                preview.className = 'preview-container';
-                preview.style.display = 'none';
-                li.appendChild(preview);
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) {
+                return 'Không xác định';
+            }
+            return date.toLocaleString('vi-VN');
+        }
 
-                previewBtn.addEventListener('click', () => {
-                    if (preview.style.display === 'none') {
-                        preview.innerHTML = '';
-                        const lower = lowerUrl;
-                        if (lower.match(/\.(png|jpe?g|gif|bmp|webp)$/)) {
-                            const img = document.createElement('img');
-                            img.src = downloadLink.href;
-                            preview.appendChild(img);
-                        } else if (lower.match(/\.(mp4|webm|ogg)$/)) {
-                            const video = document.createElement('video');
-                            video.src = downloadLink.href;
-                            video.controls = true;
-                            preview.appendChild(video);
-                        } else if (lower.match(/\.(mp3|wav|ogg)$/)) {
-                            const audio = document.createElement('audio');
-                            audio.src = downloadLink.href;
-                            audio.controls = true;
-                            preview.appendChild(audio);
-                        } else {
-                            const frame = document.createElement('iframe');
-                            frame.src = downloadLink.href;
-                            frame.width = 560;
-                            frame.height = 340;
-                            preview.appendChild(frame);
-                        }
-                        preview.style.display = 'block';
-                    } else {
-                        preview.style.display = 'none';
+        function formatRelative(isoString) {
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) {
+                return '';
+            }
+            const diffSeconds = Math.round((Date.now() - date.getTime()) / 1000);
+            const abs = Math.abs(diffSeconds);
+            const units = [
+                { limit: 60, divisor: 1, past: 'giây trước', future: 'giây nữa' },
+                { limit: 3600, divisor: 60, past: 'phút trước', future: 'phút nữa' },
+                { limit: 86400, divisor: 3600, past: 'giờ trước', future: 'giờ nữa' },
+                { limit: 604800, divisor: 86400, past: 'ngày trước', future: 'ngày nữa' },
+                { limit: 2629800, divisor: 604800, past: 'tuần trước', future: 'tuần nữa' },
+                { limit: 31557600, divisor: 2629800, past: 'tháng trước', future: 'tháng nữa' },
+                { limit: Infinity, divisor: 31557600, past: 'năm trước', future: 'năm nữa' }
+            ];
+            for (const unit of units) {
+                if (abs < unit.limit) {
+                    const value = Math.max(1, Math.round(abs / unit.divisor));
+                    if (diffSeconds >= 0) {
+                        return `${value} ${unit.past}`;
                     }
+                    return `trong ${value} ${unit.future}`;
+                }
+            }
+            return '';
+        }
+
+        function setLiveStatus(text, stateValue = 'idle') {
+            liveStatus.textContent = text;
+            liveStatus.dataset.state = stateValue;
+        }
+
+        function setNewBadge(visible) {
+            newBadge.hidden = !visible;
+        }
+
+        function createNotificationCard(item) {
+            const article = document.createElement('article');
+            article.className = 'notification-card';
+            article.dataset.id = String(item.notificationId ?? item.id ?? '');
+
+            const header = document.createElement('div');
+            header.className = 'notification-card__header';
+            const title = document.createElement('h3');
+            title.textContent = item.title || 'Không có tiêu đề';
+            header.appendChild(title);
+            if (item.appVersion) {
+                const badge = document.createElement('span');
+                badge.className = 'badge success';
+                badge.textContent = 'Bản cập nhật';
+                header.appendChild(badge);
+            }
+            article.appendChild(header);
+
+            const meta = document.createElement('p');
+            meta.className = 'notification-card__meta';
+            const createdAt = item.createdAt ?? item.timestampUtc ?? item.TimestampUtc;
+            const formatted = createdAt ? formatDateTime(createdAt) : 'Không rõ thời gian';
+            const relative = createdAt ? formatRelative(createdAt) : '';
+            meta.textContent = relative ? `${formatted} (${relative})` : formatted;
+            article.appendChild(meta);
+
+            const body = document.createElement('p');
+            body.className = 'notification-card__body';
+            body.textContent = item.message || item.body || 'Không có nội dung';
+            article.appendChild(body);
+
+            const footer = document.createElement('div');
+            footer.className = 'notification-card__footer';
+            if (item.link) {
+                const anchor = document.createElement('a');
+                anchor.href = resolveResource(item.link);
+                anchor.target = '_blank';
+                anchor.rel = 'noopener';
+                anchor.className = 'chip';
+                anchor.textContent = 'Mở đường dẫn';
+                footer.appendChild(anchor);
+            }
+            const fileUrl = item.fileUrl || item.FileUrl;
+            if (fileUrl) {
+                const anchor = document.createElement('a');
+                anchor.href = resolveResource(fileUrl);
+                anchor.target = '_blank';
+                anchor.rel = 'noopener';
+                anchor.className = 'chip';
+                anchor.textContent = 'Tệp đính kèm';
+                footer.appendChild(anchor);
+            }
+
+            if (footer.childElementCount > 0) {
+                article.appendChild(footer);
+            }
+
+            article.addEventListener('click', () => {
+                selectNotification(article.dataset.id);
+            });
+
+            return article;
+        }
+
+        function renderList() {
+            const query = searchInput.value.trim().toLowerCase();
+            let items = state.items;
+            if (query) {
+                items = items.filter(item => {
+                    const title = (item.title || '').toLowerCase();
+                    const body = (item.message || item.body || '').toLowerCase();
+                    const versionName = (item.appVersion?.versionName || '').toLowerCase();
+                    const releaseNotes = (item.appVersion?.releaseNotes || '').toLowerCase();
+                    return title.includes(query) || body.includes(query) || versionName.includes(query) || releaseNotes.includes(query);
                 });
             }
 
-            list.prepend(li);
+            listContainer.innerHTML = '';
+            if (!items.length) {
+                const empty = document.createElement('div');
+                empty.className = 'empty';
+                empty.textContent = query ? 'Không tìm thấy thông báo phù hợp với bộ lọc.' : 'Không có thông báo nào trong trang hiện tại.';
+                listContainer.appendChild(empty);
+            } else {
+                for (const item of items) {
+                    const card = createNotificationCard(item);
+                    if (state.selectedId && card.dataset.id === String(state.selectedId)) {
+                        card.classList.add('selected');
+                    }
+                    listContainer.appendChild(card);
+                }
+            }
         }
 
-        async function load() {
-            const res = await fetch(urlFrom('api/control/get-notifications'));
-            if (!res.ok) {
-                list.innerHTML = `<li>Load failed: ${res.status}</li>`;
+        function renderDetails() {
+            detailPanel.innerHTML = '';
+            const item = state.selected;
+            if (!item) {
+                const empty = document.createElement('div');
+                empty.className = 'detail-empty';
+                empty.innerHTML = '<h2>Chi tiết thông báo</h2><p>Chọn một bản ghi ở danh sách bên trái để xem nội dung.</p>';
+                detailPanel.appendChild(empty);
                 return;
             }
-            const json = await res.json();
-            list.innerHTML = '';
-            (json.items || []).forEach(add);
+
+            const header = document.createElement('div');
+            header.className = 'detail-header';
+            const title = document.createElement('h2');
+            title.textContent = item.title || 'Không có tiêu đề';
+            header.appendChild(title);
+            const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
+            copyBtn.className = 'ghost';
+            copyBtn.textContent = 'Sao chép JSON';
+            copyBtn.addEventListener('click', () => {
+                const json = JSON.stringify(item, null, 2);
+                navigator.clipboard?.writeText(json).then(() => {
+                    setLastUpdated('Đã sao chép thông báo vào clipboard.');
+                }).catch(() => {
+                    alert('Không thể sao chép, vui lòng thử lại.');
+                });
+            });
+            header.appendChild(copyBtn);
+            detailPanel.appendChild(header);
+
+            const createdAt = item.createdAt ?? item.timestampUtc ?? item.TimestampUtc;
+            const time = document.createElement('p');
+            time.className = 'detail-time';
+            const formatted = createdAt ? formatDateTime(createdAt) : 'Không rõ thời gian';
+            const relative = createdAt ? formatRelative(createdAt) : '';
+            time.textContent = relative ? `${formatted} · ${relative}` : formatted;
+            detailPanel.appendChild(time);
+
+            const message = document.createElement('div');
+            message.className = 'detail-message';
+            message.textContent = item.message || item.body || 'Không có nội dung';
+            detailPanel.appendChild(message);
+
+            const links = document.createElement('div');
+            links.className = 'detail-links';
+            if (item.link) {
+                const linkAnchor = document.createElement('a');
+                linkAnchor.href = resolveResource(item.link);
+                linkAnchor.target = '_blank';
+                linkAnchor.rel = 'noopener';
+                linkAnchor.textContent = `Mở đường dẫn: ${item.link}`;
+                links.appendChild(linkAnchor);
+            }
+            const fileUrl = item.fileUrl || item.FileUrl;
+            if (fileUrl) {
+                const fileAnchor = document.createElement('a');
+                const resolved = resolveResource(fileUrl);
+                fileAnchor.href = resolved;
+                fileAnchor.target = '_blank';
+                fileAnchor.rel = 'noopener';
+                fileAnchor.textContent = `Tải tệp đính kèm (${fileUrl})`;
+                links.appendChild(fileAnchor);
+
+                const preview = document.createElement('div');
+                preview.className = 'preview';
+                const lower = resolved.toLowerCase();
+                if (/\.(png|jpe?g|gif|bmp|webp|svg)$/.test(lower)) {
+                    const img = document.createElement('img');
+                    img.src = resolved;
+                    img.alt = 'Tệp hình ảnh đính kèm';
+                    preview.appendChild(img);
+                } else if (/\.(mp4|webm|ogg)$/.test(lower)) {
+                    const video = document.createElement('video');
+                    video.src = resolved;
+                    video.controls = true;
+                    preview.appendChild(video);
+                } else if (/\.(mp3|wav|ogg)$/.test(lower)) {
+                    const audio = document.createElement('audio');
+                    audio.src = resolved;
+                    audio.controls = true;
+                    preview.appendChild(audio);
+                } else {
+                    const frame = document.createElement('iframe');
+                    frame.src = resolved;
+                    frame.style.minHeight = '240px';
+                    preview.appendChild(frame);
+                }
+                detailPanel.appendChild(preview);
+            }
+            if (links.childElementCount > 0) {
+                detailPanel.appendChild(links);
+            }
+
+            if (item.appVersion) {
+                const version = item.appVersion;
+                const versionBox = document.createElement('div');
+                versionBox.className = 'version-box';
+                const heading = document.createElement('h3');
+                heading.textContent = `Phiên bản: ${version.versionName}`;
+                versionBox.appendChild(heading);
+
+                const releaseDate = document.createElement('p');
+                releaseDate.className = 'muted';
+                releaseDate.textContent = `Phát hành: ${formatDateTime(version.releaseDate)}`;
+                versionBox.appendChild(releaseDate);
+
+                if (version.releaseNotes) {
+                    const notes = document.createElement('p');
+                    notes.className = 'detail-message';
+                    notes.textContent = version.releaseNotes;
+                    versionBox.appendChild(notes);
+                }
+
+                if (version.fileUrl) {
+                    const download = document.createElement('a');
+                    download.href = resolveResource(version.fileUrl);
+                    download.target = '_blank';
+                    download.rel = 'noopener';
+                    download.className = 'chip';
+                    download.textContent = 'Tải bản cập nhật';
+                    versionBox.appendChild(download);
+                }
+
+                if (version.fileChecksum) {
+                    const checksum = document.createElement('p');
+                    checksum.className = 'muted';
+                    checksum.textContent = `Checksum: ${version.fileChecksum}`;
+                    versionBox.appendChild(checksum);
+                }
+
+                detailPanel.appendChild(versionBox);
+            }
         }
 
-        load();
+        function updateSelectionStyles() {
+            const cards = listContainer.querySelectorAll('.notification-card');
+            for (const card of cards) {
+                if (card.dataset.id === String(state.selectedId ?? '')) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            }
+        }
 
-        // SSE phải dùng URL đúng base
-        const evt = new EventSource(urlFrom('api/control/notifications-stream'));
-        evt.onmessage = e => add(JSON.parse(e.data));
-        evt.onerror = () => {
-            // optional: auto-reconnect (EventSource tự reconnect mặc định)
-        };
+        function selectNotification(id) {
+            state.selectedId = id;
+            state.selected = state.items.find(item => String(item.notificationId ?? item.id ?? '') === String(id)) ?? null;
+            updateSelectionStyles();
+            renderDetails();
+        }
+
+        function updatePagination() {
+            const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+            pageInfo.textContent = `Trang ${state.page}/${totalPages}`;
+            prevPageBtn.disabled = state.page <= 1;
+            nextPageBtn.disabled = state.page >= totalPages;
+        }
+
+        function updateStats() {
+            const query = searchInput.value.trim();
+            const count = query ? listContainer.querySelectorAll('.notification-card').length : state.items.length;
+            totalCount.textContent = `${count}/${state.total} thông báo`;
+        }
+
+        function setLastUpdated(text) {
+            lastUpdated.textContent = text;
+        }
+
+        async function fetchNotifications({ page = 1, silent = false } = {}) {
+            const pageSize = Number(pageSizeSelect.value) || 50;
+            state.pageSize = pageSize;
+            if (!silent) {
+                setLastUpdated('Đang tải dữ liệu...');
+            }
+
+            try {
+                const url = new URL(resolveApi('/api/control/get-notifications'));
+                url.searchParams.set('page', String(page));
+                url.searchParams.set('pageSize', String(pageSize));
+                const response = await fetch(url.toString(), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                state.page = data.page ?? page;
+                state.total = data.total ?? 0;
+                state.items = Array.isArray(data.items) ? data.items : [];
+
+                const hasSelected = state.selectedId && state.items.some(item => String(item.notificationId ?? item.id ?? '') === String(state.selectedId));
+                if (!hasSelected) {
+                    state.selectedId = state.items[0]?.notificationId ?? state.items[0]?.id ?? null;
+                }
+                state.selected = state.items.find(item => String(item.notificationId ?? item.id ?? '') === String(state.selectedId)) ?? null;
+
+                renderList();
+                renderDetails();
+                updatePagination();
+                updateStats();
+                if (!silent) {
+                    setLastUpdated(`Đã tải ${state.items.length} bản ghi lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+                } else {
+                    setLastUpdated(`Danh sách cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+                }
+                state.hasUnseen = false;
+                setNewBadge(false);
+            } catch (error) {
+                console.error(error);
+                if (!silent) {
+                    listContainer.innerHTML = '';
+                    const empty = document.createElement('div');
+                    empty.className = 'empty';
+                    empty.textContent = `Không thể tải dữ liệu: ${error.message}`;
+                    listContainer.appendChild(empty);
+                }
+                setLastUpdated(`Lỗi tải dữ liệu: ${error.message}`);
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            autoRefreshTimer = setInterval(() => {
+                fetchNotifications({ page: state.page, silent: true });
+            }, 30000);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+        }
+
+        function connectLive() {
+            disconnectLive();
+            setLiveStatus('Đang kết nối...', 'connecting');
+            try {
+                eventSource = new EventSource(resolveApi('/api/control/notifications-stream'));
+            } catch (error) {
+                console.error(error);
+                setLiveStatus('Không thể mở kết nối SSE.', 'error');
+                liveToggle.checked = false;
+                return;
+            }
+
+            eventSource.onopen = () => {
+                setLiveStatus('Đã kết nối realtime.', 'connected');
+            };
+            eventSource.onmessage = (event) => {
+                try {
+                    JSON.parse(event.data);
+                } catch {
+                    // ignore invalid payloads
+                }
+                if (state.page === 1) {
+                    fetchNotifications({ page: 1, silent: true });
+                } else {
+                    state.hasUnseen = true;
+                    setNewBadge(true);
+                }
+            };
+            eventSource.onerror = () => {
+                setLiveStatus('Mất kết nối realtime, đang thử lại...', 'error');
+            };
+        }
+
+        function disconnectLive() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            setLiveStatus('Đang tắt.', 'idle');
+        }
+
+        refreshBtn.addEventListener('click', () => {
+            fetchNotifications({ page: 1 });
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            renderList();
+            updateStats();
+            searchInput.focus();
+        });
+
+        pageSizeSelect.addEventListener('change', () => {
+            fetchNotifications({ page: 1 });
+        });
+
+        searchInput.addEventListener('input', () => {
+            renderList();
+            updateStats();
+        });
+
+        prevPageBtn.addEventListener('click', () => {
+            if (state.page > 1) {
+                fetchNotifications({ page: state.page - 1 });
+            }
+        });
+
+        nextPageBtn.addEventListener('click', () => {
+            const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+            if (state.page < totalPages) {
+                fetchNotifications({ page: state.page + 1 });
+            }
+        });
+
+        autoRefreshToggle.addEventListener('change', () => {
+            if (autoRefreshToggle.checked) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        });
+
+        liveToggle.addEventListener('change', () => {
+            if (liveToggle.checked) {
+                connectLive();
+            } else {
+                disconnectLive();
+            }
+        });
+
+        versionForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!versionForm.reportValidity()) {
+                return;
+            }
+            const current = currentVersionInput.value.trim();
+            if (!current) {
+                return;
+            }
+            versionResult.textContent = 'Đang kiểm tra...';
+            copyVersionBtn.disabled = true;
+            try {
+                const url = new URL(resolveApi('/api/control/check-app-version'));
+                url.searchParams.set('currentVersion', current);
+                const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const json = await response.json();
+                lastVersionPayload = JSON.stringify(json, null, 2);
+                versionResult.textContent = lastVersionPayload;
+                copyVersionBtn.disabled = false;
+            } catch (error) {
+                versionResult.textContent = `Không thể kiểm tra phiên bản: ${error.message}`;
+            }
+        });
+
+        copyVersionBtn.addEventListener('click', () => {
+            if (!lastVersionPayload) {
+                return;
+            }
+            navigator.clipboard?.writeText(lastVersionPayload).then(() => {
+                setLastUpdated('Đã sao chép kết quả kiểm tra phiên bản.');
+            }).catch(() => {
+                alert('Không thể sao chép, vui lòng thử lại.');
+            });
+        });
+
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+            disconnectLive();
+        });
+
+        fetchNotifications({ page: 1 });
     </script>
 </body>
 </html>
