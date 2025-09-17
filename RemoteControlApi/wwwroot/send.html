@@ -288,7 +288,7 @@
                     <div class="field">
                         <label for="appVersionId">App Version ID (tuỳ chọn)</label>
                         <input type="number" id="appVersionId" name="appVersionId" min="1" step="1" />
-                        <small>Nhập ID bản cập nhật trong bảng <code>AppVersions</code> để gắn thông báo với phiên bản ứng dụng.</small>
+                        <small>Nhập ID bản cập nhật trong bảng <code>AppVersions</code> để gắn thông báo với phiên bản ứng dụng. Bỏ trống nếu không dùng, hệ thống sẽ tự loại bỏ trường này khỏi request.</small>
                     </div>
                 </div>
 
@@ -385,11 +385,17 @@
                     title,
                     body,
                     link: link || null,
-                    appVersionId: previewAppVersionId,
                     fileName: file ? file.name : null,
                     fileBase64: file ? '(sẽ được sinh tự động khi gửi)' : null
                 };
-                requestPreview.textContent = JSON.stringify(previewObj, null, 2);
+                if (previewAppVersionId !== null) {
+                    previewObj.appVersionId = previewAppVersionId;
+                }
+                let previewJson = JSON.stringify(previewObj, null, 2);
+                if (previewAppVersionId === null) {
+                    previewJson += '\n// appVersionId sẽ không được gửi vì bạn để trống';
+                }
+                requestPreview.textContent = previewJson;
             } else {
                 const lines = [
                     'POST /api/control/send-notification',
@@ -474,10 +480,12 @@
                         title,
                         body,
                         link: link || null,
-                        appVersionId,
                         fileName: file ? file.name : null,
                         fileBase64
                     };
+                    if (appVersionId !== null) {
+                        payload.appVersionId = appVersionId;
+                    }
 
                     requestPreview.textContent = JSON.stringify(payload, null, 2);
 

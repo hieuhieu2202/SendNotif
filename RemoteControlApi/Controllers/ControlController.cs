@@ -230,6 +230,11 @@ public class ControlController : ControllerBase
 
     private async Task<IActionResult> HandleNotificationAsync(NotificationMessage message)
     {
+        if (message.AppVersionId.HasValue && message.AppVersionId.Value <= 0)
+        {
+            message.AppVersionId = null;
+        }
+
         if (!TryValidateModel(message)) return ValidationProblem(ModelState);
         message.Link = string.IsNullOrWhiteSpace(message.Link) ? null : message.Link.Trim();
 
@@ -240,7 +245,10 @@ public class ControlController : ControllerBase
                 .AnyAsync(v => v.AppVersionId == message.AppVersionId.Value);
             if (!exists)
             {
-                ModelState.AddModelError(nameof(NotificationMessage.AppVersionId), "AppVersionId không tồn tại.");
+                ModelState.AddModelError(
+                    nameof(NotificationMessage.AppVersionId),
+                    "AppVersionId không tồn tại. Có thể bỏ trống trường này nếu không cần gắn với bản cập nhật."
+                );
                 return ValidationProblem(ModelState);
             }
         }
