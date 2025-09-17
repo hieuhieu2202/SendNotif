@@ -1,14 +1,14 @@
 # RemoteControlApi
 
-Hệ thống cung cấp backend quản lý thông báo và cập nhật ứng dụng cho thiết bị di động. Ứng dụng ASP.NET Core 8.0 sử dụng Entity Framework Core để tự động khởi tạo/ cập nhật schema CSDL và seed dữ liệu mẫu ngay khi dịch vụ chạy.
+Hệ thống cung cấp backend quản lý thông báo và cập nhật ứng dụng cho thiết bị di động. Ứng dụng ASP.NET Core 8.0 sử dụng Entity Framework Core để tự động khởi tạo/ cập nhật schema CSDL khi dịch vụ chạy.
 
 ## 1. Kết nối & tự động migration
 - **Connection string** được khai báo trong `appsettings*.json` với key `ConnectionStrings:AppDatabase`:
   ```text
   Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertificate=True
   ```
-- Ở `Program.cs`, dịch vụ được cấu hình `UseSqlServer(...)`, luôn gọi `Database.MigrateAsync()` và chạy `DatabaseSeeder.SeedAsync(...)` khi khởi động ⇒ mọi migration mới sẽ được áp dụng tự động và dữ liệu mẫu được thêm khi bảng còn trống.
-- Migration đầu tiên (`20240717000000_InitialCreate`) tạo bảng. Việc bổ sung 3 phiên bản ứng dụng và 4 thông báo mẫu được `DatabaseSeeder` thực hiện ngay sau bước migrate.
+- Ở `Program.cs`, dịch vụ được cấu hình `UseSqlServer(...)` và luôn gọi `Database.MigrateAsync()` khi khởi động ⇒ mọi migration mới sẽ được áp dụng tự động.
+- Migration đầu tiên (`20240717000000_InitialCreate`) tạo bảng; dữ liệu thực tế sẽ do admin hoặc tác vụ nền tự thêm sau khi triển khai.
 
 ## 2. Mô hình dữ liệu
 Hệ thống gồm hai bảng chính với quan hệ 1-n:
@@ -45,21 +45,8 @@ CREATE TABLE Notifications (
 );
 ```
 
-### 2.3 Seed dữ liệu mẫu
-| AppVersionId | VersionName | ReleaseNotes                      | FileUrl                          | FileChecksum | ReleaseDate (UTC)        |
-|-------------:|-------------|-----------------------------------|----------------------------------|--------------|--------------------------|
-| 1            | 1.0.0       | Ra mắt ứng dụng                   | https://example.com/v1.0.0.apk   | a1b2c3       | 2025-07-01 09:00:00      |
-| 2            | 1.1.0       | Thêm chức năng X, fix bug Y       | https://example.com/v1.1.0.apk   | b2c3d4       | 2025-08-15 10:00:00      |
-| 3            | 1.2.0       | Fix lỗi đăng nhập, UI tối ưu      | https://example.com/v1.2.0.apk   | c3d4e5       | 2025-09-17 09:30:00      |
-
-| NotificationId | Title                 | Message                                 | CreatedAt (UTC)        | AppVersionId | IsActive |
-|---------------:|----------------------|-----------------------------------------|------------------------|--------------|---------:|
-| 1              | 🎉 Ra mắt ứng dụng    | Phiên bản 1.0.0 đã chính thức ra mắt    | 2025-07-01 09:00:00    | 1            | 0        |
-| 2              | 🚀 Bản cập nhật 1.1.0 | Có nhiều cải tiến mới, tải ngay!        | 2025-08-15 10:00:00    | 2            | 1        |
-| 3              | ⚡ Cập nhật 1.2.0     | Fix lỗi đăng nhập + UI dark mode        | 2025-09-17 09:30:00    | 3            | 1        |
-| 4              | 🔧 Bảo trì hệ thống   | Hệ thống sẽ bảo trì 23h ngày 20/09      | 2025-09-17 12:00:00    | NULL         | 1        |
-
-> Các bản ghi trên được `DatabaseSeeder` thêm tự động khi phát hiện bảng đang trống.
+### 2.3 Quản lý dữ liệu
+Ngay sau khi migration được áp dụng, hệ thống không tự thêm dữ liệu mẫu. Admin chủ động tạo bản ghi `AppVersions` và `Notifications` thông qua dashboard, migration seed riêng hoặc script phù hợp với quy trình vận hành của bạn.
 
 ## 3. Luồng chính
 1. **Admin phát hành bản mới**
@@ -74,6 +61,7 @@ CREATE TABLE Notifications (
 3. **Client lấy danh sách thông báo**
    - Gọi `GET /api/control/get-notifications?page=1&pageSize=20`.
    - Server chỉ trả các bản ghi `IsActive=1`, sắp xếp mới nhất trước và join thông tin phiên bản nếu có.
+   - Ví dụ JSON bên dưới chỉ mang tính minh hoạ; dữ liệu thực tế phụ thuộc vào các bản ghi mà admin đã thêm.
 
 4. **Client kiểm tra cập nhật**
    - Gọi `GET /api/control/check-app-version?currentVersion=<phiên bản hiện tại>`.
