@@ -1,92 +1,523 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <title>Send Notification</title>
+    <title>Bảng điều khiển gửi thông báo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f5f5f8;
+            --card: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --border: #e5e7eb;
+            --success: #059669;
+            --error: #dc2626;
+            font-size: 16px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --card: #1e293b;
+                --text: #f8fafc;
+                --muted: #cbd5f5;
+                --border: #334155;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: system-ui, Arial, sans-serif;
-            margin: 24px;
+            margin: 0;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 32px 20px 80px;
+            display: grid;
+            gap: 24px;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+            font-size: clamp(1.75rem, 1.2rem + 1.5vw, 2.4rem);
+        }
+
+        header p {
+            margin: 0;
+            color: var(--muted);
+            max-width: 720px;
+            line-height: 1.55;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
         }
 
         form {
             display: grid;
-            gap: 10px;
-            max-width: 520px;
+            gap: 20px;
         }
 
-        label {
+        .field {
             display: grid;
-            gap: 4px;
+            gap: 6px;
         }
 
-        input, textarea {
-            padding: 6px 8px;
+        .field label {
+            font-weight: 600;
+        }
+
+        .field input[type="text"],
+        .field input[type="url"],
+        .field textarea,
+        .field select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: inherit;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .field textarea {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .field small {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .radio-group input {
+            accent-color: var(--primary);
+        }
+
+        .file-input {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .file-input input[type="file"] {
+            padding: 10px 12px;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
         }
 
         button {
-            padding: 8px 12px;
+            border: none;
+            border-radius: 999px;
+            padding: 12px 22px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(120deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+        }
+
+        button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 35px rgba(37, 99, 235, 0.45);
+        }
+
+        button[type="button"] {
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--primary);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-line {
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        .status-line strong {
+            color: inherit;
+        }
+
+        .status-line.success {
+            color: var(--success);
+        }
+
+        .status-line.error {
+            color: var(--error);
         }
 
         pre {
-            background: #111;
-            color: #eee;
-            padding: 12px;
+            margin: 0;
+            padding: 16px;
+            background: rgba(15, 23, 42, 0.85);
+            color: #e2e8f0;
+            border-radius: 12px;
             overflow: auto;
+            font-size: 0.92rem;
+        }
+
+        .preview-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .preview-grid h3 {
+            margin: 0 0 8px;
+            font-size: 1.05rem;
+        }
+
+        .two-column {
+            display: grid;
+            gap: 16px;
+        }
+
+        @media (min-width: 900px) {
+            .two-column {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        a.inline-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a.inline-link:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <h1>Send Notification</h1>
-    <form id="notifyForm" enctype="multipart/form-data">
-        <label>
-            ID (optional)
-            <input id="id" name="id" />
-        </label>
-        <label>
-            Title
-            <input id="title" name="title" required />
-        </label>
-        <label>
-            Body
-            <textarea id="body" name="body" required></textarea>
-        </label>
-        <label>
-            File
-            <input id="file" name="file" type="file" />
-        </label>
-        <button type="submit">Send</button>
-    </form>
+    <main>
+        <header>
+            <h1>Bảng điều khiển gửi thông báo</h1>
+            <p>
+                Sử dụng trang này để gửi thông báo thủ công tới API của bạn. Chọn dạng payload (multipart hoặc JSON),
+                nhập nội dung cần gửi rồi bấm <strong>Gửi thông báo</strong>. Phần <em>Xem trước</em> sẽ cho biết rõ request
+                được tạo ra và <em>Kết quả phản hồi</em> hiển thị nội dung từ máy chủ.
+            </p>
+        </header>
 
-    <h3>Result</h3>
-    <pre id="result"></pre>
+        <section class="card">
+            <form id="notifyForm" novalidate>
+                <div class="field">
+                    <label for="baseUrl">Máy chủ API</label>
+                    <input type="url" id="baseUrl" name="baseUrl" placeholder="https://your-domain" required />
+                    <small>Đường dẫn gốc tới dịch vụ (ví dụ: <code>https://api.myapp.com</code>). Hệ thống sẽ tự nối với
+                        endpoint tương ứng.</small>
+                </div>
+
+                <div class="field">
+                    <label for="payloadType">Dạng gửi</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="payloadType" value="form" checked /> multipart/form-data</label>
+                        <label><input type="radio" name="payloadType" value="json" /> application/json</label>
+                    </div>
+                    <small>Multipart phù hợp khi muốn đính kèm tệp. JSON sẽ base64 hoá tệp (nếu có) trước khi gửi.</small>
+                </div>
+
+                <div class="two-column">
+                    <div class="field">
+                        <label for="notificationId">Notification ID (tuỳ chọn)</label>
+                        <input type="text" id="notificationId" name="notificationId" placeholder="Tự sinh nếu để trống" />
+                        <small>Có thể dùng để ép trùng ID khi cần đồng bộ với hệ thống khác.</small>
+                    </div>
+                    <div class="field">
+                        <label for="title">Tiêu đề</label>
+                        <input type="text" id="title" name="title" required maxlength="120" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="body">Nội dung</label>
+                    <textarea id="body" name="body" required maxlength="4000"
+                        placeholder="Nhập nội dung chi tiết của thông báo..."></textarea>
+                </div>
+
+                <div class="field">
+                    <label for="file">Tệp đính kèm (tuỳ chọn)</label>
+                    <div class="file-input">
+                        <input type="file" id="file" name="file" />
+                    </div>
+                    <small>Máy chủ sẽ lưu tệp và trả lại đường dẫn trong phản hồi.</small>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" id="submitBtn">Gửi thông báo</button>
+                    <button type="button" id="resetBtn">Xoá nội dung</button>
+                    <span class="status-line" id="statusLine">Chưa gửi request nào.</span>
+                </div>
+            </form>
+        </section>
+
+        <section class="card preview-grid">
+            <div>
+                <h3>Xem trước request</h3>
+                <pre id="requestPreview">{ }</pre>
+            </div>
+            <div>
+                <h3>Kết quả phản hồi</h3>
+                <pre id="responsePreview">Chưa có phản hồi.</pre>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Gợi ý sử dụng nhanh</h2>
+            <p>
+                • API gửi multipart: <code>/api/control/send-notification</code><br />
+                • API gửi JSON: <code>/api/control/send-notification-json</code><br />
+                • Tham khảo thêm tài liệu tại <a class="inline-link" href="/swagger" target="_blank">/swagger</a>.
+            </p>
+        </section>
+    </main>
 
     <script>
-        const urlFrom = (path) => new URL(path, window.location).toString();
-
         const form = document.getElementById('notifyForm');
-        const result = document.getElementById('result');
+        const baseUrlInput = document.getElementById('baseUrl');
+        const payloadTypeInputs = form.elements['payloadType'];
+        const idInput = document.getElementById('notificationId');
+        const titleInput = document.getElementById('title');
+        const bodyInput = document.getElementById('body');
+        const fileInput = document.getElementById('file');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusLine = document.getElementById('statusLine');
+        const requestPreview = document.getElementById('requestPreview');
+        const responsePreview = document.getElementById('responsePreview');
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            result.textContent = 'Sending...';
+        const defaultBase = window.location.origin;
+        baseUrlInput.value = defaultBase;
+
+        function getPayloadType() {
+            return Array.from(payloadTypeInputs).find(r => r.checked)?.value ?? 'form';
+        }
+
+        function normalizeBaseUrl(value) {
+            return value.replace(/\/$/, '');
+        }
+
+        function buildPreview() {
+            const payloadType = getPayloadType();
+            const id = idInput.value.trim();
+            const title = titleInput.value.trim();
+            const body = bodyInput.value.trim();
+            const file = fileInput.files?.[0];
+
+            if (payloadType === 'json') {
+                const previewObj = {
+                    id: id || null,
+                    title,
+                    body,
+                    fileName: file ? file.name : null,
+                    fileBase64: file ? '(sẽ được sinh tự động khi gửi)' : null
+                };
+                requestPreview.textContent = JSON.stringify(previewObj, null, 2);
+            } else {
+                const lines = [
+                    'POST /api/control/send-notification',
+                    '',
+                    'FormData:',
+                    ` • title = ${title || '(trống)'}`,
+                    ` • body = ${body || '(trống)'}`,
+                    ` • id = ${id || '(không gửi)'}`,
+                    file ? ` • file = ${file.name} (${Math.round(file.size / 1024)} KB)` : ' • file = (không gửi)'
+                ];
+                requestPreview.textContent = lines.join('\n');
+            }
+        }
+
+        async function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result;
+                    if (typeof result === 'string') {
+                        const commaIndex = result.indexOf(',');
+                        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+                    } else {
+                        reject(new Error('Không đọc được file.'));
+                    }
+                };
+                reader.onerror = () => reject(reader.error ?? new Error('Lỗi đọc file.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function sendNotification(event) {
+            event.preventDefault();
+
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            const baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
+            if (!baseUrl) {
+                statusLine.textContent = 'Vui lòng nhập địa chỉ máy chủ hợp lệ.';
+                statusLine.className = 'status-line error';
+                return;
+            }
+
+            const payloadType = getPayloadType();
+            const id = idInput.value.trim();
+            const title = titleInput.value.trim();
+            const body = bodyInput.value.trim();
+            const file = fileInput.files?.[0];
+
+            submitBtn.disabled = true;
+            resetBtn.disabled = true;
+            statusLine.textContent = 'Đang gửi thông báo...';
+            statusLine.className = 'status-line';
+            responsePreview.textContent = 'Đang chờ phản hồi từ máy chủ...';
 
             try {
-                const data = new FormData(form);
-                const res = await fetch(urlFrom('api/control/send-notification'), {
-                    method: 'POST',
-                    body: data
-                });
+                let url;
+                let options;
 
-                let bodyText = await res.text();
-                try { bodyText = JSON.stringify(JSON.parse(bodyText), null, 2); } catch { }
-                result.textContent = `${res.status} ${res.statusText}\n\n${bodyText}`;
+                if (payloadType === 'json') {
+                    url = `${baseUrl}/api/control/send-notification-json`;
+                    let fileBase64 = null;
+                    if (file) {
+                        fileBase64 = await fileToBase64(file);
+                    }
 
-                if (res.ok) form.reset();
-            } catch (err) {
-                result.textContent = 'Error: ' + (err?.message || err);
+                    const payload = {
+                        id: id || null,
+                        title,
+                        body,
+                        fileName: file ? file.name : null,
+                        fileBase64
+                    };
+
+                    requestPreview.textContent = JSON.stringify(payload, null, 2);
+
+                    options = {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    };
+                } else {
+                    url = `${baseUrl}/api/control/send-notification`;
+                    const formData = new FormData();
+                    formData.append('title', title);
+                    formData.append('body', body);
+                    if (id) formData.append('id', id);
+                    if (file) formData.append('file', file, file.name);
+
+                    const lines = [
+                        'POST ' + new URL(url).pathname,
+                        '',
+                        'FormData:',
+                        ` • title = ${title}`,
+                        ` • body = ${body}`,
+                        id ? ` • id = ${id}` : ' • id = (không gửi)',
+                        file ? ` • file = ${file.name} (${Math.round(file.size / 1024)} KB)` : ' • file = (không gửi)'
+                    ];
+                    requestPreview.textContent = lines.join('\n');
+
+                    options = {
+                        method: 'POST',
+                        body: formData
+                    };
+                }
+
+                const response = await fetch(url, options);
+                const text = await response.text();
+                let bodyText = text;
+                try {
+                    bodyText = JSON.stringify(JSON.parse(text), null, 2);
+                } catch (_) {
+                    // giữ nguyên text nếu không phải JSON
+                }
+
+                statusLine.textContent = `Hoàn thành: ${response.status} ${response.statusText}`;
+                statusLine.className = response.ok ? 'status-line success' : 'status-line error';
+                responsePreview.textContent = bodyText || '(Không có nội dung phản hồi)';
+
+                if (response.ok) {
+                    form.reset();
+                    baseUrlInput.value = baseUrl;
+                    buildPreview();
+                }
+            } catch (error) {
+                statusLine.textContent = 'Lỗi: ' + (error?.message || error);
+                statusLine.className = 'status-line error';
+                responsePreview.textContent = 'Không gửi được request tới máy chủ.';
+            } finally {
+                submitBtn.disabled = false;
+                resetBtn.disabled = false;
             }
+        }
+
+        function resetForm() {
+            form.reset();
+            baseUrlInput.value = defaultBase;
+            responsePreview.textContent = 'Chưa có phản hồi.';
+            statusLine.textContent = 'Đã xoá nội dung form.';
+            statusLine.className = 'status-line';
+            buildPreview();
+        }
+
+        form.addEventListener('submit', sendNotification);
+        resetBtn.addEventListener('click', resetForm);
+
+        [baseUrlInput, idInput, titleInput, bodyInput].forEach(input => {
+            input.addEventListener('input', buildPreview);
         });
+        Array.from(payloadTypeInputs).forEach(r => r.addEventListener('change', buildPreview));
+        fileInput.addEventListener('change', buildPreview);
+
+        buildPreview();
     </script>
 </body>
 </html>
