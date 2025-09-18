@@ -2,1150 +2,318 @@
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <title>Trung tâm theo dõi thông báo</title>
+    <title>Giám sát thông báo ứng dụng</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         :root {
             color-scheme: light dark;
-            --bg: #f5f5f8;
-            --card: #ffffff;
-            --text: #111827;
-            --muted: #6b7280;
-            --border: #e5e7eb;
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --success: #059669;
-            --warning: #f59e0b;
-            --danger: #dc2626;
-            font-size: 16px;
+            font-family: "Inter", system-ui, sans-serif;
         }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #0f172a;
-                --card: #1e293b;
-                --text: #f8fafc;
-                --muted: #cbd5f5;
-                --border: #334155;
-            }
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
         body {
             margin: 0;
-            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
+            background: #f2f4f8;
+            color: #111827;
+            padding: 1.5rem;
         }
-
-        main {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 32px 20px 80px;
-            display: grid;
-            gap: 24px;
+        header {
+            margin-bottom: 1.5rem;
         }
-
-        header h1 {
-            margin: 0 0 10px;
-            font-size: clamp(1.75rem, 1.2rem + 1.5vw, 2.4rem);
-        }
-
-        header p {
+        h1 {
             margin: 0;
-            color: var(--muted);
-            max-width: 760px;
-            line-height: 1.55;
+            font-size: 1.9rem;
         }
-
         .card {
-            background: var(--card);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-            padding: 24px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 10px 24px rgba(15, 32, 75, 0.12);
+            margin-bottom: 1.25rem;
         }
-
-        .controls-grid {
-            display: grid;
-            gap: 18px;
-        }
-
-        @media (min-width: 768px) {
-            .controls-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        .field {
-            display: grid;
-            gap: 6px;
-        }
-
-        .field label {
+        label {
             font-weight: 600;
+            display: block;
+            margin-bottom: 0.35rem;
         }
-
-        .field input[type="text"],
-        .field input[type="url"],
-        .field input[type="search"],
-        .field select {
+        input, select, button {
+            font-size: 0.95rem;
+        }
+        input[type="text"],
+        input[type="url"],
+        select {
             width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: inherit;
-            font-size: 1rem;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            padding: 0.55rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #cbd5f5;
+            box-sizing: border-box;
         }
-
-        .field input[type="text"]:focus,
-        .field input[type="url"]:focus,
-        .field input[type="search"]:focus,
-        .field select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
-        }
-
-        .field small {
-            color: var(--muted);
-            font-size: 0.875rem;
-            line-height: 1.4;
-        }
-
-        .checkbox-field {
-            align-content: start;
-        }
-
-        .checkbox-field label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .checkbox-field input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--primary);
-        }
-
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            margin-top: 12px;
-        }
-
         button {
             border: none;
-            border-radius: 999px;
-            padding: 11px 22px;
-            font-size: 1rem;
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-        }
-
-        button.primary {
-            background: linear-gradient(120deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(135deg, #10b981, #059669);
             color: #fff;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
         }
-
-        button.primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 16px 35px rgba(37, 99, 235, 0.45);
+        button.secondary {
+            background: transparent;
+            color: #059669;
+            border: 1px solid #a7f3d0;
         }
-
-        button.ghost {
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--primary);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            box-shadow: none;
-            transform: none;
-        }
-
-        .status-line {
-            font-size: 0.95rem;
-            color: var(--muted);
-        }
-
-        .layout {
+        .grid {
             display: grid;
-            gap: 24px;
+            gap: 1rem;
         }
-
-        @media (min-width: 1024px) {
-            .layout {
-                grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-                align-items: start;
+        @media (min-width: 992px) {
+            .grid-columns-2 {
+                grid-template-columns: 2fr 3fr;
             }
         }
-
-        .list-header {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: center;
-            margin-bottom: 18px;
-        }
-
-        .list-header h2 {
-            margin: 0;
-            font-size: 1.35rem;
-        }
-
-        .list-header p {
-            margin: 4px 0 0;
-            color: var(--muted);
-            font-size: 0.95rem;
-        }
-
-        .list-stats {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            font-weight: 500;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--primary);
-        }
-
-        .badge.alert {
-            background: rgba(245, 158, 11, 0.16);
-            color: var(--warning);
-        }
-
-        .badge.success {
-            background: rgba(5, 150, 105, 0.18);
-            color: var(--success);
-        }
-
-        .notification-list {
+        .notif-list {
             display: grid;
-            gap: 14px;
+            gap: 0.75rem;
         }
-
-        .notification-card {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 18px;
-            background: rgba(148, 163, 184, 0.04);
-            cursor: pointer;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        .notif-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 0.9rem 1rem;
+            background: #fdfdfd;
         }
-
-        .notification-card__header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px;
+        .notif-item h3 {
+            margin: 0 0 0.35rem;
+            font-size: 1.05rem;
         }
-
-        .notification-card:hover {
-            border-color: rgba(37, 99, 235, 0.45);
-            transform: translateY(-1px);
-            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+        .notif-meta {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 0.35rem;
         }
-
-        .notification-card.selected {
-            border-color: rgba(37, 99, 235, 0.7);
-            box-shadow: 0 12px 34px rgba(37, 99, 235, 0.18);
-            background: rgba(37, 99, 235, 0.08);
+        .notif-body {
+            font-size: 0.95rem;
+            white-space: pre-wrap;
         }
-
-        .notification-card h3 {
-            margin: 0 0 6px;
-            font-size: 1.15rem;
-        }
-
-        .notification-card__meta {
-            margin: 0 0 12px;
-            color: var(--muted);
+        .update-block {
+            margin-top: 0.6rem;
+            background: #ecfdf5;
+            border-left: 4px solid #34d399;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
             font-size: 0.9rem;
         }
-
-        .notification-card__body {
-            margin: 0 0 12px;
-            line-height: 1.55;
-        }
-
-        .notification-card__footer {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .chip {
-            border-radius: 999px;
-            border: 1px solid var(--border);
-            padding: 6px 14px;
-            font-size: 0.88rem;
-            text-decoration: none;
-            color: inherit;
-            transition: border-color 0.2s ease, color 0.2s ease;
-        }
-
-        .chip:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .pagination {
-            margin-top: 22px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .pagination span {
-            font-weight: 600;
-        }
-
-        .detail-card {
-            min-height: 320px;
-            display: grid;
-            gap: 16px;
-        }
-
-        .detail-empty {
-            text-align: center;
-            color: var(--muted);
-            display: grid;
-            gap: 8px;
-            justify-items: center;
-            padding: 24px 0;
-        }
-
-        .detail-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .detail-header h2 {
-            margin: 0;
-            font-size: 1.3rem;
-        }
-
-        .detail-time {
-            margin: 0;
-            color: var(--muted);
-            font-size: 0.95rem;
-        }
-
-        .detail-message {
-            margin: 12px 0;
+        .status {
+            background: #0b1120;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 8px;
+            min-height: 120px;
             white-space: pre-wrap;
-            line-height: 1.6;
-        }
-
-        .detail-links {
-            display: grid;
-            gap: 10px;
-        }
-
-        .detail-links a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .detail-links a:hover {
-            text-decoration: underline;
-        }
-
-        .preview {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px;
-            display: grid;
-            gap: 12px;
-        }
-
-        .preview img,
-        .preview video,
-        .preview audio,
-        .preview iframe {
-            max-width: 100%;
-            border-radius: 10px;
-        }
-
-        .version-box {
-            border: 1px solid rgba(37, 99, 235, 0.3);
-            border-radius: 12px;
-            padding: 14px;
-            background: rgba(37, 99, 235, 0.07);
-            display: grid;
-            gap: 8px;
-        }
-
-        .version-box h3 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-
-        .code-block {
-            background: rgba(15, 23, 42, 0.85);
-            color: #e2e8f0;
-            border-radius: 12px;
-            padding: 18px;
-            overflow: auto;
-            font-size: 0.92rem;
-            margin: 0;
-        }
-
-        .version-form {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .version-form input[type="text"] {
-            flex: 1 1 200px;
-        }
-
-        .muted {
-            color: var(--muted);
-            font-size: 0.92rem;
-        }
-
-        #liveStatus[data-state="connected"] {
-            color: var(--success);
-        }
-
-        #liveStatus[data-state="error"] {
-            color: var(--danger);
-        }
-
-        #liveStatus[data-state="connecting"] {
-            color: var(--warning);
-        }
-
-        .empty {
-            padding: 24px;
-            text-align: center;
-            color: var(--muted);
-            border: 1px dashed var(--border);
-            border-radius: 12px;
-        }
-
-        @media (max-width: 480px) {
-            button {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .actions {
-                flex-direction: column;
-                align-items: stretch;
-            }
         }
     </style>
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Trung tâm theo dõi thông báo</h1>
-            <p>
-                Trang này giúp bạn xem lại lịch sử thông báo từ API, theo dõi realtime bằng Server-Sent Events và kiểm tra
-                phiên bản ứng dụng mới nhất. Dữ liệu hiển thị mặc định chỉ gồm các bản ghi đang bật (<code>IsActive = 1</code>).
-            </p>
-        </header>
+<header>
+    <h1>Trung tâm nhận thông báo</h1>
+    <p>Chọn ứng dụng để xem thông báo mới nhất và kiểm tra phiên bản.</p>
+</header>
 
-        <section class="card">
-            <div class="field">
-                <label for="baseUrl">Máy chủ API</label>
-                <input type="url" id="baseUrl" placeholder="https://your-domain" required />
-                <small>Đường dẫn gốc tới dịch vụ. Ví dụ: <code>https://api.myapp.com</code>. Hệ thống sẽ tự ghép với các
-                    endpoint tương ứng.</small>
+<section class="card">
+    <div class="grid" style="gap:0.85rem;">
+        <div>
+            <label for="baseUrl">Máy chủ API</label>
+            <input id="baseUrl" type="url" placeholder="https://example.com" />
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:flex-end;">
+            <button id="btnLoadApps">Tải ứng dụng</button>
+            <button id="btnRefresh" class="secondary">Làm mới thông báo</button>
+        </div>
+        <div>
+            <label for="appSelect">Ứng dụng</label>
+            <select id="appSelect" disabled>
+                <option value="">-- Chưa chọn --</option>
+            </select>
+        </div>
+    </div>
+</section>
+
+<div class="grid grid-columns-2">
+    <section class="card">
+        <h2>Danh sách thông báo</h2>
+        <div id="notifList" class="notif-list"></div>
+    </section>
+    <section class="card">
+        <h2>Kiểm tra cập nhật ứng dụng</h2>
+        <form id="versionForm" class="grid" style="gap:0.75rem;">
+            <div>
+                <label for="currentVersion">Phiên bản hiện tại *</label>
+                <input id="currentVersion" type="text" placeholder="vd: 1.0.0" required />
             </div>
-
-            <div class="controls-grid">
-                <div class="field">
-                    <label for="pageSize">Số thông báo mỗi trang</label>
-                    <select id="pageSize">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50" selected>50</option>
-                        <option value="100">100</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label for="searchTerm">Tìm kiếm nhanh</label>
-                    <input type="search" id="searchTerm" placeholder="Nhập tiêu đề, nội dung hoặc phiên bản..." />
-                    <small>Bộ lọc áp dụng trên dữ liệu của trang hiện tại.</small>
-                </div>
-                <div class="field checkbox-field">
-                    <label>
-                        <input type="checkbox" id="autoRefresh" />
-                        <span>Tự làm mới sau mỗi 30 giây</span>
-                    </label>
-                    <small>Bật khi cần giám sát liên tục nhưng không muốn dùng realtime SSE.</small>
-                </div>
-                <div class="field checkbox-field">
-                    <label>
-                        <input type="checkbox" id="liveToggle" />
-                        <span>Kết nối realtime (Server-Sent Events)</span>
-                    </label>
-                    <small id="liveStatus" data-state="idle">Đang tắt.</small>
-                </div>
+            <div style="display:flex; gap:0.75rem; align-items:center;">
+                <button type="submit">Kiểm tra</button>
+                <button type="button" id="clearStatus" class="secondary">Xoá log</button>
             </div>
+        </form>
+        <pre id="status" class="status">Chưa thực hiện kiểm tra.</pre>
+    </section>
+</div>
 
-            <div class="actions">
-                <button type="button" id="refreshBtn" class="primary">Tải lại danh sách</button>
-                <button type="button" id="clearSearch" class="ghost">Xoá tìm kiếm</button>
-                <span class="status-line" id="lastUpdated">Chưa tải dữ liệu.</span>
-            </div>
-        </section>
+<script>
+const state = {
+    baseUrl: '',
+    apps: [],
+    selectedApp: null,
+    notifications: []
+};
 
-        <section class="layout">
-            <section class="card list-card">
-                <div class="list-header">
-                    <div>
-                        <h2>Danh sách thông báo</h2>
-                        <p>Nhấn vào từng bản ghi để xem chi tiết ở panel bên cạnh.</p>
-                    </div>
-                    <div class="list-stats">
-                        <span id="totalCount">0 thông báo</span>
-                        <span class="badge alert" id="newBadge" hidden>Thông báo mới</span>
-                    </div>
-                </div>
+const baseUrlInput = document.getElementById('baseUrl');
+const btnLoadApps = document.getElementById('btnLoadApps');
+const btnRefresh = document.getElementById('btnRefresh');
+const appSelect = document.getElementById('appSelect');
+const notifList = document.getElementById('notifList');
+const versionForm = document.getElementById('versionForm');
+const statusEl = document.getElementById('status');
+const clearStatusBtn = document.getElementById('clearStatus');
 
-                <div id="notificationList" class="notification-list">
-                    <div class="empty">Chưa có dữ liệu.</div>
-                </div>
+function normalizeBaseUrl(value) {
+    return value ? value.replace(/\/$/, '') : '';
+}
 
-                <div class="pagination">
-                    <button type="button" id="prevPage" class="ghost">Trang trước</button>
-                    <span id="pageInfo">Trang 1/1</span>
-                    <button type="button" id="nextPage" class="ghost">Trang sau</button>
-                </div>
-            </section>
+function setStatus(text, data) {
+    const content = [text, data ? JSON.stringify(data, null, 2) : null]
+        .filter(Boolean)
+        .join('\n');
+    statusEl.textContent = content || 'Đang chờ thao tác.';
+}
 
-            <aside class="card detail-card" id="detailPanel">
-                <div class="detail-empty">
-                    <h2>Chi tiết thông báo</h2>
-                    <p>Chọn một bản ghi ở danh sách bên trái để xem nội dung chi tiết, tệp đính kèm và phiên bản ứng dụng
-                        (nếu có).</p>
-                </div>
-            </aside>
-        </section>
+async function fetchJson(path) {
+    if (!state.baseUrl) throw new Error('Chưa thiết lập API base URL');
+    const res = await fetch(`${state.baseUrl}${path}`);
+    if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`${res.status} ${res.statusText}: ${txt}`);
+    }
+    return res.json();
+}
 
-        <section class="card version-card">
-            <h2>Kiểm tra phiên bản ứng dụng</h2>
-            <p class="muted">Nhập phiên bản hiện tại trên thiết bị để so sánh với bản phát hành mới nhất từ máy chủ.</p>
-            <form id="versionForm" class="version-form" novalidate>
-                <input type="text" id="currentVersion" placeholder="Ví dụ: 1.2.3" required />
-                <button type="submit" class="primary">Kiểm tra</button>
-                <button type="button" id="copyVersionResult" class="ghost" disabled>Sao chép JSON</button>
-            </form>
-            <pre id="versionResult" class="code-block">Chưa có yêu cầu.</pre>
-        </section>
-    </main>
+btnLoadApps.addEventListener('click', async () => {
+    state.baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Nhập địa chỉ máy chủ API trước.');
+        return;
+    }
+    try {
+        btnLoadApps.disabled = true;
+        appSelect.disabled = true;
+        appSelect.innerHTML = '<option value="">-- Đang tải --</option>';
+        const apps = await fetchJson('/api/control/applications');
+        state.apps = apps;
+        renderAppOptions();
+    } catch (err) {
+        alert('Không thể tải ứng dụng: ' + err.message);
+    } finally {
+        btnLoadApps.disabled = false;
+    }
+});
 
-    <script>
-        const baseInput = document.getElementById('baseUrl');
-        const pageSizeSelect = document.getElementById('pageSize');
-        const searchInput = document.getElementById('searchTerm');
-        const autoRefreshToggle = document.getElementById('autoRefresh');
-        const liveToggle = document.getElementById('liveToggle');
-        const liveStatus = document.getElementById('liveStatus');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const clearSearchBtn = document.getElementById('clearSearch');
-        const lastUpdated = document.getElementById('lastUpdated');
-        const listContainer = document.getElementById('notificationList');
-        const totalCount = document.getElementById('totalCount');
-        const pageInfo = document.getElementById('pageInfo');
-        const prevPageBtn = document.getElementById('prevPage');
-        const nextPageBtn = document.getElementById('nextPage');
-        const newBadge = document.getElementById('newBadge');
-        const detailPanel = document.getElementById('detailPanel');
-        const versionForm = document.getElementById('versionForm');
-        const currentVersionInput = document.getElementById('currentVersion');
-        const versionResult = document.getElementById('versionResult');
-        const copyVersionBtn = document.getElementById('copyVersionResult');
+function renderAppOptions() {
+    appSelect.innerHTML = '<option value="">-- Chọn ứng dụng --</option>';
+    state.apps.forEach(app => {
+        const option = document.createElement('option');
+        option.value = app.appKey;
+        option.textContent = `${app.displayName} (${app.appKey})`;
+        appSelect.appendChild(option);
+    });
+    appSelect.disabled = state.apps.length === 0;
+}
 
-        const defaultBase = window.location.origin;
-        baseInput.value = defaultBase;
+appSelect.addEventListener('change', async () => {
+    const key = appSelect.value;
+    if (!key) {
+        state.selectedApp = null;
+        notifList.innerHTML = '';
+        return;
+    }
+    state.selectedApp = key;
+    await loadNotifications();
+});
 
-        const state = {
-            page: 1,
-            pageSize: Number(pageSizeSelect.value) || 50,
-            total: 0,
-            items: [],
-            selectedId: null,
-            selected: null,
-            hasUnseen: false
-        };
+async function loadNotifications() {
+    if (!state.selectedApp) return;
+    try {
+        btnRefresh.disabled = true;
+        notifList.innerHTML = '<p>Đang tải thông báo...</p>';
+        const data = await fetchJson(`/api/control/get-notifications?appKey=${encodeURIComponent(state.selectedApp)}&pageSize=50`);
+        state.notifications = data.items ?? [];
+        renderNotifications();
+    } catch (err) {
+        notifList.innerHTML = `<p style="color:#dc2626;">Lỗi tải thông báo: ${err.message}</p>`;
+    } finally {
+        btnRefresh.disabled = false;
+    }
+}
 
-        let autoRefreshTimer = null;
-        let eventSource = null;
-        let lastVersionPayload = '';
-
-        function normalizeBase(value) {
-            const trimmed = (value || '').trim();
-            if (!trimmed) {
-                return defaultBase;
-            }
-            try {
-                const url = new URL(trimmed, window.location.href);
-                return url.origin + url.pathname.replace(/\/?$/, '');
-            } catch {
-                return defaultBase;
-            }
+function renderNotifications() {
+    notifList.innerHTML = '';
+    if (state.notifications.length === 0) {
+        notifList.innerHTML = '<p>Chưa có thông báo nào.</p>';
+        return;
+    }
+    state.notifications.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'notif-item';
+        const created = new Date(item.createdAt).toLocaleString();
+        const linkHtml = item.link ? `<a href="${item.link}" target="_blank" rel="noopener">${item.link}</a>` : 'Không có';
+        div.innerHTML = `
+            <h3>${item.title}</h3>
+            <div class="notif-meta">${created} • ${item.appName ?? item.appKey}</div>
+            <div class="notif-body">${item.message ?? ''}</div>
+            <div class="notif-meta">Liên kết: ${linkHtml}</div>
+        `;
+        if (item.fileUrl) {
+            const fileLink = document.createElement('div');
+            fileLink.className = 'notif-meta';
+            fileLink.innerHTML = `Tệp đính kèm: <a href="${item.fileUrl}" target="_blank" rel="noopener">${item.fileUrl}</a>`;
+            div.appendChild(fileLink);
         }
-
-        function resolveApi(path) {
-            const base = normalizeBase(baseInput.value);
-            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-            return new URL(cleanPath, base + '/').toString();
+        if (item.appVersion) {
+            const block = document.createElement('div');
+            block.className = 'update-block';
+            const platform = item.appVersion.platform ? ` (${item.appVersion.platform})` : '';
+            block.innerHTML = `
+                <strong>Bản cập nhật: ${item.appVersion.versionName}${platform}</strong><br/>
+                ${item.appVersion.releaseNotes ?? 'Không có ghi chú.'}<br/>
+                <a href="${item.appVersion.fileUrl}" target="_blank" rel="noopener">Tải gói cài đặt</a>
+            `;
+            div.appendChild(block);
         }
+        notifList.appendChild(div);
+    });
+}
 
-        function resolveResource(path) {
-            try {
-                return new URL(path, normalizeBase(baseInput.value) + '/').toString();
-            } catch {
-                return path;
-            }
-        }
+btnRefresh.addEventListener('click', () => loadNotifications());
 
-        function formatDateTime(isoString) {
-            const date = new Date(isoString);
-            if (Number.isNaN(date.getTime())) {
-                return 'Không xác định';
-            }
-            return date.toLocaleString('vi-VN');
-        }
+versionForm.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    if (!state.selectedApp) {
+        alert('Chọn ứng dụng trước khi kiểm tra phiên bản.');
+        return;
+    }
+    const current = document.getElementById('currentVersion').value.trim();
+    if (!current) {
+        alert('Vui lòng nhập phiên bản hiện tại.');
+        return;
+    }
+    try {
+        setStatus('Đang kiểm tra cập nhật...');
+        const data = await fetchJson(`/api/control/check-app-version?appKey=${encodeURIComponent(state.selectedApp)}&currentVersion=${encodeURIComponent(current)}`);
+        setStatus('Kết quả kiểm tra:', data);
+    } catch (err) {
+        setStatus('Kiểm tra thất bại:', err.message);
+    }
+});
 
-        function formatRelative(isoString) {
-            const date = new Date(isoString);
-            if (Number.isNaN(date.getTime())) {
-                return '';
-            }
-            const diffSeconds = Math.round((Date.now() - date.getTime()) / 1000);
-            const abs = Math.abs(diffSeconds);
-            const units = [
-                { limit: 60, divisor: 1, past: 'giây trước', future: 'giây nữa' },
-                { limit: 3600, divisor: 60, past: 'phút trước', future: 'phút nữa' },
-                { limit: 86400, divisor: 3600, past: 'giờ trước', future: 'giờ nữa' },
-                { limit: 604800, divisor: 86400, past: 'ngày trước', future: 'ngày nữa' },
-                { limit: 2629800, divisor: 604800, past: 'tuần trước', future: 'tuần nữa' },
-                { limit: 31557600, divisor: 2629800, past: 'tháng trước', future: 'tháng nữa' },
-                { limit: Infinity, divisor: 31557600, past: 'năm trước', future: 'năm nữa' }
-            ];
-            for (const unit of units) {
-                if (abs < unit.limit) {
-                    const value = Math.max(1, Math.round(abs / unit.divisor));
-                    if (diffSeconds >= 0) {
-                        return `${value} ${unit.past}`;
-                    }
-                    return `trong ${value} ${unit.future}`;
-                }
-            }
-            return '';
-        }
-
-        function setLiveStatus(text, stateValue = 'idle') {
-            liveStatus.textContent = text;
-            liveStatus.dataset.state = stateValue;
-        }
-
-        function setNewBadge(visible) {
-            newBadge.hidden = !visible;
-        }
-
-        function createNotificationCard(item) {
-            const article = document.createElement('article');
-            article.className = 'notification-card';
-            article.dataset.id = String(item.notificationId ?? item.id ?? '');
-
-            const header = document.createElement('div');
-            header.className = 'notification-card__header';
-            const title = document.createElement('h3');
-            title.textContent = item.title || 'Không có tiêu đề';
-            header.appendChild(title);
-            if (item.appVersion) {
-                const badge = document.createElement('span');
-                badge.className = 'badge success';
-                badge.textContent = 'Bản cập nhật';
-                header.appendChild(badge);
-            }
-            article.appendChild(header);
-
-            const meta = document.createElement('p');
-            meta.className = 'notification-card__meta';
-            const createdAt = item.createdAt ?? item.timestampUtc ?? item.TimestampUtc;
-            const formatted = createdAt ? formatDateTime(createdAt) : 'Không rõ thời gian';
-            const relative = createdAt ? formatRelative(createdAt) : '';
-            meta.textContent = relative ? `${formatted} (${relative})` : formatted;
-            article.appendChild(meta);
-
-            const body = document.createElement('p');
-            body.className = 'notification-card__body';
-            body.textContent = item.message || item.body || 'Không có nội dung';
-            article.appendChild(body);
-
-            const footer = document.createElement('div');
-            footer.className = 'notification-card__footer';
-            if (item.link) {
-                const anchor = document.createElement('a');
-                anchor.href = resolveResource(item.link);
-                anchor.target = '_blank';
-                anchor.rel = 'noopener';
-                anchor.className = 'chip';
-                anchor.textContent = 'Mở đường dẫn';
-                footer.appendChild(anchor);
-            }
-            const fileUrl = item.fileUrl || item.FileUrl;
-            if (fileUrl) {
-                const anchor = document.createElement('a');
-                anchor.href = resolveResource(fileUrl);
-                anchor.target = '_blank';
-                anchor.rel = 'noopener';
-                anchor.className = 'chip';
-                anchor.textContent = 'Tệp đính kèm';
-                footer.appendChild(anchor);
-            }
-
-            if (footer.childElementCount > 0) {
-                article.appendChild(footer);
-            }
-
-            article.addEventListener('click', () => {
-                selectNotification(article.dataset.id);
-            });
-
-            return article;
-        }
-
-        function renderList() {
-            const query = searchInput.value.trim().toLowerCase();
-            let items = state.items;
-            if (query) {
-                items = items.filter(item => {
-                    const title = (item.title || '').toLowerCase();
-                    const body = (item.message || item.body || '').toLowerCase();
-                    const versionName = (item.appVersion?.versionName || '').toLowerCase();
-                    const releaseNotes = (item.appVersion?.releaseNotes || '').toLowerCase();
-                    return title.includes(query) || body.includes(query) || versionName.includes(query) || releaseNotes.includes(query);
-                });
-            }
-
-            listContainer.innerHTML = '';
-            if (!items.length) {
-                const empty = document.createElement('div');
-                empty.className = 'empty';
-                empty.textContent = query ? 'Không tìm thấy thông báo phù hợp với bộ lọc.' : 'Không có thông báo nào trong trang hiện tại.';
-                listContainer.appendChild(empty);
-            } else {
-                for (const item of items) {
-                    const card = createNotificationCard(item);
-                    if (state.selectedId && card.dataset.id === String(state.selectedId)) {
-                        card.classList.add('selected');
-                    }
-                    listContainer.appendChild(card);
-                }
-            }
-        }
-
-        function renderDetails() {
-            detailPanel.innerHTML = '';
-            const item = state.selected;
-            if (!item) {
-                const empty = document.createElement('div');
-                empty.className = 'detail-empty';
-                empty.innerHTML = '<h2>Chi tiết thông báo</h2><p>Chọn một bản ghi ở danh sách bên trái để xem nội dung.</p>';
-                detailPanel.appendChild(empty);
-                return;
-            }
-
-            const header = document.createElement('div');
-            header.className = 'detail-header';
-            const title = document.createElement('h2');
-            title.textContent = item.title || 'Không có tiêu đề';
-            header.appendChild(title);
-            const copyBtn = document.createElement('button');
-            copyBtn.type = 'button';
-            copyBtn.className = 'ghost';
-            copyBtn.textContent = 'Sao chép JSON';
-            copyBtn.addEventListener('click', () => {
-                const json = JSON.stringify(item, null, 2);
-                navigator.clipboard?.writeText(json).then(() => {
-                    setLastUpdated('Đã sao chép thông báo vào clipboard.');
-                }).catch(() => {
-                    alert('Không thể sao chép, vui lòng thử lại.');
-                });
-            });
-            header.appendChild(copyBtn);
-            detailPanel.appendChild(header);
-
-            const createdAt = item.createdAt ?? item.timestampUtc ?? item.TimestampUtc;
-            const time = document.createElement('p');
-            time.className = 'detail-time';
-            const formatted = createdAt ? formatDateTime(createdAt) : 'Không rõ thời gian';
-            const relative = createdAt ? formatRelative(createdAt) : '';
-            time.textContent = relative ? `${formatted} · ${relative}` : formatted;
-            detailPanel.appendChild(time);
-
-            const message = document.createElement('div');
-            message.className = 'detail-message';
-            message.textContent = item.message || item.body || 'Không có nội dung';
-            detailPanel.appendChild(message);
-
-            const links = document.createElement('div');
-            links.className = 'detail-links';
-            if (item.link) {
-                const linkAnchor = document.createElement('a');
-                linkAnchor.href = resolveResource(item.link);
-                linkAnchor.target = '_blank';
-                linkAnchor.rel = 'noopener';
-                linkAnchor.textContent = `Mở đường dẫn: ${item.link}`;
-                links.appendChild(linkAnchor);
-            }
-            const fileUrl = item.fileUrl || item.FileUrl;
-            if (fileUrl) {
-                const fileAnchor = document.createElement('a');
-                const resolved = resolveResource(fileUrl);
-                fileAnchor.href = resolved;
-                fileAnchor.target = '_blank';
-                fileAnchor.rel = 'noopener';
-                fileAnchor.textContent = `Tải tệp đính kèm (${fileUrl})`;
-                links.appendChild(fileAnchor);
-
-                const preview = document.createElement('div');
-                preview.className = 'preview';
-                const lower = resolved.toLowerCase();
-                if (/\.(png|jpe?g|gif|bmp|webp|svg)$/.test(lower)) {
-                    const img = document.createElement('img');
-                    img.src = resolved;
-                    img.alt = 'Tệp hình ảnh đính kèm';
-                    preview.appendChild(img);
-                } else if (/\.(mp4|webm|ogg)$/.test(lower)) {
-                    const video = document.createElement('video');
-                    video.src = resolved;
-                    video.controls = true;
-                    preview.appendChild(video);
-                } else if (/\.(mp3|wav|ogg)$/.test(lower)) {
-                    const audio = document.createElement('audio');
-                    audio.src = resolved;
-                    audio.controls = true;
-                    preview.appendChild(audio);
-                } else {
-                    const frame = document.createElement('iframe');
-                    frame.src = resolved;
-                    frame.style.minHeight = '240px';
-                    preview.appendChild(frame);
-                }
-                detailPanel.appendChild(preview);
-            }
-            if (links.childElementCount > 0) {
-                detailPanel.appendChild(links);
-            }
-
-            if (item.appVersion) {
-                const version = item.appVersion;
-                const versionBox = document.createElement('div');
-                versionBox.className = 'version-box';
-                const heading = document.createElement('h3');
-                heading.textContent = `Phiên bản: ${version.versionName}`;
-                versionBox.appendChild(heading);
-
-                const releaseDate = document.createElement('p');
-                releaseDate.className = 'muted';
-                releaseDate.textContent = `Phát hành: ${formatDateTime(version.releaseDate)}`;
-                versionBox.appendChild(releaseDate);
-
-                if (version.releaseNotes) {
-                    const notes = document.createElement('p');
-                    notes.className = 'detail-message';
-                    notes.textContent = version.releaseNotes;
-                    versionBox.appendChild(notes);
-                }
-
-                if (version.fileUrl) {
-                    const download = document.createElement('a');
-                    download.href = resolveResource(version.fileUrl);
-                    download.target = '_blank';
-                    download.rel = 'noopener';
-                    download.className = 'chip';
-                    download.textContent = 'Tải bản cập nhật';
-                    versionBox.appendChild(download);
-                }
-
-                if (version.fileChecksum) {
-                    const checksum = document.createElement('p');
-                    checksum.className = 'muted';
-                    checksum.textContent = `Checksum: ${version.fileChecksum}`;
-                    versionBox.appendChild(checksum);
-                }
-
-                detailPanel.appendChild(versionBox);
-            }
-        }
-
-        function updateSelectionStyles() {
-            const cards = listContainer.querySelectorAll('.notification-card');
-            for (const card of cards) {
-                if (card.dataset.id === String(state.selectedId ?? '')) {
-                    card.classList.add('selected');
-                } else {
-                    card.classList.remove('selected');
-                }
-            }
-        }
-
-        function selectNotification(id) {
-            state.selectedId = id;
-            state.selected = state.items.find(item => String(item.notificationId ?? item.id ?? '') === String(id)) ?? null;
-            updateSelectionStyles();
-            renderDetails();
-        }
-
-        function updatePagination() {
-            const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
-            pageInfo.textContent = `Trang ${state.page}/${totalPages}`;
-            prevPageBtn.disabled = state.page <= 1;
-            nextPageBtn.disabled = state.page >= totalPages;
-        }
-
-        function updateStats() {
-            const query = searchInput.value.trim();
-            const count = query ? listContainer.querySelectorAll('.notification-card').length : state.items.length;
-            totalCount.textContent = `${count}/${state.total} thông báo`;
-        }
-
-        function setLastUpdated(text) {
-            lastUpdated.textContent = text;
-        }
-
-        async function fetchNotifications({ page = 1, silent = false } = {}) {
-            const pageSize = Number(pageSizeSelect.value) || 50;
-            state.pageSize = pageSize;
-            if (!silent) {
-                setLastUpdated('Đang tải dữ liệu...');
-            }
-
-            try {
-                const url = new URL(resolveApi('/api/control/get-notifications'));
-                url.searchParams.set('page', String(page));
-                url.searchParams.set('pageSize', String(pageSize));
-                const response = await fetch(url.toString(), {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const data = await response.json();
-                state.page = data.page ?? page;
-                state.total = data.total ?? 0;
-                state.items = Array.isArray(data.items) ? data.items : [];
-
-                const hasSelected = state.selectedId && state.items.some(item => String(item.notificationId ?? item.id ?? '') === String(state.selectedId));
-                if (!hasSelected) {
-                    state.selectedId = state.items[0]?.notificationId ?? state.items[0]?.id ?? null;
-                }
-                state.selected = state.items.find(item => String(item.notificationId ?? item.id ?? '') === String(state.selectedId)) ?? null;
-
-                renderList();
-                renderDetails();
-                updatePagination();
-                updateStats();
-                if (!silent) {
-                    setLastUpdated(`Đã tải ${state.items.length} bản ghi lúc ${new Date().toLocaleTimeString('vi-VN')}`);
-                } else {
-                    setLastUpdated(`Danh sách cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')}`);
-                }
-                state.hasUnseen = false;
-                setNewBadge(false);
-            } catch (error) {
-                console.error(error);
-                if (!silent) {
-                    listContainer.innerHTML = '';
-                    const empty = document.createElement('div');
-                    empty.className = 'empty';
-                    empty.textContent = `Không thể tải dữ liệu: ${error.message}`;
-                    listContainer.appendChild(empty);
-                }
-                setLastUpdated(`Lỗi tải dữ liệu: ${error.message}`);
-            }
-        }
-
-        function startAutoRefresh() {
-            stopAutoRefresh();
-            autoRefreshTimer = setInterval(() => {
-                fetchNotifications({ page: state.page, silent: true });
-            }, 30000);
-        }
-
-        function stopAutoRefresh() {
-            if (autoRefreshTimer) {
-                clearInterval(autoRefreshTimer);
-                autoRefreshTimer = null;
-            }
-        }
-
-        function connectLive() {
-            disconnectLive();
-            setLiveStatus('Đang kết nối...', 'connecting');
-            try {
-                eventSource = new EventSource(resolveApi('/api/control/notifications-stream'));
-            } catch (error) {
-                console.error(error);
-                setLiveStatus('Không thể mở kết nối SSE.', 'error');
-                liveToggle.checked = false;
-                return;
-            }
-
-            eventSource.onopen = () => {
-                setLiveStatus('Đã kết nối realtime.', 'connected');
-            };
-            eventSource.onmessage = (event) => {
-                try {
-                    JSON.parse(event.data);
-                } catch {
-                    // ignore invalid payloads
-                }
-                if (state.page === 1) {
-                    fetchNotifications({ page: 1, silent: true });
-                } else {
-                    state.hasUnseen = true;
-                    setNewBadge(true);
-                }
-            };
-            eventSource.onerror = () => {
-                setLiveStatus('Mất kết nối realtime, đang thử lại...', 'error');
-            };
-        }
-
-        function disconnectLive() {
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-            setLiveStatus('Đang tắt.', 'idle');
-        }
-
-        refreshBtn.addEventListener('click', () => {
-            fetchNotifications({ page: 1 });
-        });
-
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            renderList();
-            updateStats();
-            searchInput.focus();
-        });
-
-        pageSizeSelect.addEventListener('change', () => {
-            fetchNotifications({ page: 1 });
-        });
-
-        searchInput.addEventListener('input', () => {
-            renderList();
-            updateStats();
-        });
-
-        prevPageBtn.addEventListener('click', () => {
-            if (state.page > 1) {
-                fetchNotifications({ page: state.page - 1 });
-            }
-        });
-
-        nextPageBtn.addEventListener('click', () => {
-            const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
-            if (state.page < totalPages) {
-                fetchNotifications({ page: state.page + 1 });
-            }
-        });
-
-        autoRefreshToggle.addEventListener('change', () => {
-            if (autoRefreshToggle.checked) {
-                startAutoRefresh();
-            } else {
-                stopAutoRefresh();
-            }
-        });
-
-        liveToggle.addEventListener('change', () => {
-            if (liveToggle.checked) {
-                connectLive();
-            } else {
-                disconnectLive();
-            }
-        });
-
-        versionForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (!versionForm.reportValidity()) {
-                return;
-            }
-            const current = currentVersionInput.value.trim();
-            if (!current) {
-                return;
-            }
-            versionResult.textContent = 'Đang kiểm tra...';
-            copyVersionBtn.disabled = true;
-            try {
-                const url = new URL(resolveApi('/api/control/check-app-version'));
-                url.searchParams.set('currentVersion', current);
-                const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const json = await response.json();
-                lastVersionPayload = JSON.stringify(json, null, 2);
-                versionResult.textContent = lastVersionPayload;
-                copyVersionBtn.disabled = false;
-            } catch (error) {
-                versionResult.textContent = `Không thể kiểm tra phiên bản: ${error.message}`;
-            }
-        });
-
-        copyVersionBtn.addEventListener('click', () => {
-            if (!lastVersionPayload) {
-                return;
-            }
-            navigator.clipboard?.writeText(lastVersionPayload).then(() => {
-                setLastUpdated('Đã sao chép kết quả kiểm tra phiên bản.');
-            }).catch(() => {
-                alert('Không thể sao chép, vui lòng thử lại.');
-            });
-        });
-
-        window.addEventListener('beforeunload', () => {
-            stopAutoRefresh();
-            disconnectLive();
-        });
-
-        fetchNotifications({ page: 1 });
-    </script>
+clearStatusBtn.addEventListener('click', () => {
+    setStatus('Log đã được xoá.');
+});
+</script>
 </body>
 </html>

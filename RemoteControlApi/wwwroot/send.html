@@ -2,729 +2,370 @@
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <title>Bảng điều khiển gửi thông báo</title>
+    <title>Gửi thông báo đa ứng dụng</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         :root {
             color-scheme: light dark;
-            --bg: #f5f5f8;
-            --card: #ffffff;
-            --text: #111827;
-            --muted: #6b7280;
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --border: #e5e7eb;
-            --success: #059669;
-            --error: #dc2626;
-            font-size: 16px;
+            font-family: "Segoe UI", system-ui, sans-serif;
         }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #0f172a;
-                --card: #1e293b;
-                --text: #f8fafc;
-                --muted: #cbd5f5;
-                --border: #334155;
-            }
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
         body {
             margin: 0;
-            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
+            padding: 0 1rem 2rem;
+            background: #f5f7fb;
+            color: #1f2933;
         }
-
-        main {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 32px 20px 80px;
-            display: grid;
-            gap: 24px;
+        header {
+            padding: 1.5rem 0 1rem;
         }
-
-        header h1 {
-            margin: 0 0 8px;
-            font-size: clamp(1.75rem, 1.2rem + 1.5vw, 2.4rem);
+        h1 {
+            margin: 0 0 0.5rem;
+            font-size: 1.8rem;
         }
-
-        header p {
-            margin: 0;
-            color: var(--muted);
-            max-width: 720px;
-            line-height: 1.55;
-        }
-
         .card {
-            background: var(--card);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid var(--border);
-            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 12px 30px rgba(15, 32, 75, 0.12);
+            margin-bottom: 1.25rem;
         }
-
-        form {
-            display: grid;
-            gap: 20px;
-        }
-
-        .field {
-            display: grid;
-            gap: 6px;
-        }
-
-        .field label {
+        label {
             font-weight: 600;
+            display: block;
+            margin-bottom: 0.35rem;
         }
-
-        .field input[type="text"],
-        .field input[type="url"],
-        .field textarea,
-        .field select {
+        input[type="text"],
+        input[type="url"],
+        textarea,
+        select {
             width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: inherit;
-            font-size: 1rem;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid #cbd2d9;
+            border-radius: 8px;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.95rem;
+            box-sizing: border-box;
         }
-
-        .app-version-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .app-version-row select {
-            flex: 1 1 240px;
-            min-width: 220px;
-        }
-
-        .app-version-row button {
-            padding: 10px 18px;
-            border-radius: 10px;
-        }
-
-        .app-version-hint {
-            margin-top: 6px;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: rgba(37, 99, 235, 0.06);
-            color: var(--muted);
-            font-size: 0.875rem;
-            white-space: pre-line;
-        }
-
-        .app-version-hint strong {
-            color: var(--text);
-        }
-
-        .field textarea {
-            min-height: 150px;
+        textarea {
+            min-height: 140px;
             resize: vertical;
-            line-height: 1.5;
         }
-
-        .field small {
-            color: var(--muted);
-            font-size: 0.875rem;
-        }
-
-        .radio-group {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .radio-group label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .radio-group input {
-            accent-color: var(--primary);
-        }
-
-        .file-input {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .file-input input[type="file"] {
-            padding: 10px 12px;
-            border: 1px dashed var(--border);
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-        }
-
         button {
             border: none;
-            border-radius: 999px;
-            padding: 12px 22px;
-            font-size: 1rem;
+            border-radius: 8px;
+            padding: 0.65rem 1.2rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
         }
-
-        button[type="submit"] {
-            background: linear-gradient(120deg, var(--primary), var(--primary-dark));
-            color: white;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+        button.secondary {
+            background: transparent;
+            color: #1d4ed8;
+            border: 1px solid #d1d5db;
         }
-
-        button[type="submit"]:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 16px 35px rgba(37, 99, 235, 0.45);
-        }
-
-        button[type="button"] {
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--primary);
-        }
-
         button:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
-
-        .status-line {
-            font-size: 0.95rem;
-            color: var(--muted);
-        }
-
-        .status-line strong {
-            color: inherit;
-        }
-
-        .status-line.success {
-            color: var(--success);
-        }
-
-        .status-line.error {
-            color: var(--error);
-        }
-
-        pre {
-            margin: 0;
-            padding: 16px;
-            background: rgba(15, 23, 42, 0.85);
-            color: #e2e8f0;
-            border-radius: 12px;
-            overflow: auto;
-            font-size: 0.92rem;
-        }
-
-        .preview-grid {
+        .grid {
             display: grid;
-            gap: 16px;
+            gap: 1rem;
         }
-
-        .preview-grid h3 {
-            margin: 0 0 8px;
-            font-size: 1.05rem;
-        }
-
-        .two-column {
-            display: grid;
-            gap: 16px;
-        }
-
-        @media (min-width: 900px) {
-            .two-column {
-                grid-template-columns: 1fr 1fr;
+        @media (min-width: 960px) {
+            .grid-columns-2 {
+                grid-template-columns: 2fr 3fr;
             }
         }
-
-        a.inline-link {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
+        .apps-list {
+            display: grid;
+            gap: 0.5rem;
         }
-
-        a.inline-link:hover {
-            text-decoration: underline;
+        .app-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        .status {
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            background: #0f172a;
+            color: #e0f2fe;
+            padding: 1rem;
+            border-radius: 8px;
+            min-height: 120px;
+        }
+        .hint {
+            font-size: 0.9rem;
+            color: #4b5563;
         }
     </style>
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Bảng điều khiển gửi thông báo</h1>
-            <p>
-                Sử dụng trang này để gửi thông báo thủ công tới API của bạn. Chọn dạng payload (multipart hoặc JSON),
-                nhập nội dung cần gửi rồi bấm <strong>Gửi thông báo</strong>. Phần <em>Xem trước</em> sẽ cho biết rõ request
-                được tạo ra và <em>Kết quả phản hồi</em> hiển thị nội dung từ máy chủ.
-            </p>
-        </header>
+<header>
+    <h1>Bảng điều khiển gửi thông báo</h1>
+    <p class="hint">Chọn một hoặc nhiều ứng dụng để gửi. Khi chỉ chọn 1 ứng dụng, bạn có thể gắn thông báo với một bản cập nhật cụ thể.</p>
+</header>
 
-        <section class="card">
-            <form id="notifyForm" novalidate>
-                <div class="field">
-                    <label for="baseUrl">Máy chủ API</label>
-                    <input type="url" id="baseUrl" name="baseUrl" placeholder="https://your-domain" required />
-                    <small>Đường dẫn gốc tới dịch vụ (ví dụ: <code>https://api.myapp.com</code>). Hệ thống sẽ tự nối với
-                        endpoint tương ứng.</small>
-                </div>
+<section class="card">
+    <label for="apiBase">Máy chủ API</label>
+    <div class="grid" style="grid-template-columns: minmax(0,1fr) auto; gap: 0.75rem; align-items: end;">
+        <input id="apiBase" type="url" placeholder="https://example.com" />
+        <button id="loadApps">Tải danh sách ứng dụng</button>
+    </div>
+    <p class="hint" style="margin-top:0.5rem;">Đường dẫn cơ sở được ghép với các endpoint như <code>/api/control/applications</code>.</p>
+</section>
 
-                <div class="field">
-                    <label for="payloadType">Dạng gửi</label>
-                    <div class="radio-group">
-                        <label><input type="radio" name="payloadType" value="form" checked /> multipart/form-data</label>
-                        <label><input type="radio" name="payloadType" value="json" /> application/json</label>
-                    </div>
-                    <small>Multipart phù hợp khi muốn đính kèm tệp. JSON sẽ base64 hoá tệp (nếu có) trước khi gửi.</small>
-                </div>
+<div class="grid grid-columns-2">
+    <section class="card">
+        <h2>Ứng dụng nhận thông báo</h2>
+        <div id="appsContainer" class="apps-list"></div>
+        <p id="appsHint" class="hint">Chưa có dữ liệu. Bấm "Tải danh sách ứng dụng" hoặc thêm ứng dụng mới qua API.</p>
+    </section>
 
-                <div class="two-column">
-                    <div class="field">
-                        <label for="notificationId">Notification ID (tuỳ chọn)</label>
-                        <input type="text" id="notificationId" name="notificationId" placeholder="Tự sinh nếu để trống" />
-                        <small>Có thể dùng để ép trùng ID khi cần đồng bộ với hệ thống khác.</small>
-                    </div>
-                    <div class="field">
-                        <label for="title">Tiêu đề</label>
-                        <input type="text" id="title" name="title" required maxlength="120" />
-                    </div>
-                </div>
-
-                <div class="two-column">
-                    <div class="field">
-                        <label for="link">Link chi tiết (tuỳ chọn)</label>
-                        <input type="url" id="link" name="link" placeholder="https://example.com/chi-tiet" maxlength="255" />
-                        <small>Nếu cần chuyển người dùng đến trang chi tiết, hãy nhập URL đầy đủ tại đây.</small>
-                    </div>
-                    <div class="field">
-                        <label for="appVersionId">App Version (tuỳ chọn)</label>
-                        <div class="app-version-row">
-                            <select id="appVersionId" name="appVersionId">
-                                <option value="">Không gắn với bản cập nhật</option>
-                            </select>
-                            <button type="button" id="refreshAppVersions">Tải danh sách</button>
-                        </div>
-                        <small>Nhấn "Tải danh sách" để lấy các bản phát hành từ <code>/api/control/app-versions</code>. Nếu chưa tạo bản phát hành, hãy thêm trước rồi quay lại chọn ở đây.</small>
-                        <div class="app-version-hint" id="appVersionDetails">Chưa chọn bản cập nhật.</div>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label for="body">Nội dung</label>
-                    <textarea id="body" name="body" required maxlength="4000"
-                        placeholder="Nhập nội dung chi tiết của thông báo..."></textarea>
-                </div>
-
-                <div class="field">
-                    <label for="file">Tệp đính kèm (tuỳ chọn)</label>
-                    <div class="file-input">
-                        <input type="file" id="file" name="file" />
-                    </div>
-                    <small>Máy chủ sẽ lưu tệp và trả lại đường dẫn trong phản hồi.</small>
-                </div>
-
-                <div class="actions">
-                    <button type="submit" id="submitBtn">Gửi thông báo</button>
-                    <button type="button" id="resetBtn">Xoá nội dung</button>
-                    <span class="status-line" id="statusLine">Chưa gửi request nào.</span>
-                </div>
-            </form>
-        </section>
-
-        <section class="card preview-grid">
+    <section class="card">
+        <h2>Nội dung thông báo</h2>
+        <form id="sendForm" class="grid" style="gap: 0.85rem;">
             <div>
-                <h3>Xem trước request</h3>
-                <pre id="requestPreview">{ }</pre>
+                <label for="title">Tiêu đề *</label>
+                <input id="title" type="text" required maxlength="120" placeholder="Ví dụ: 🚀 Cập nhật mới" />
             </div>
             <div>
-                <h3>Kết quả phản hồi</h3>
-                <pre id="responsePreview">Chưa có phản hồi.</pre>
+                <label for="body">Nội dung *</label>
+                <textarea id="body" required maxlength="4000" placeholder="Mô tả chi tiết"></textarea>
             </div>
-        </section>
+            <div>
+                <label for="link">Liên kết chuyển hướng</label>
+                <input id="link" type="url" placeholder="https://... (tuỳ chọn)" />
+            </div>
+            <div>
+                <label for="versionSelect">Gắn bản cập nhật</label>
+                <select id="versionSelect" disabled>
+                    <option value="">-- Không gắn bản cập nhật --</option>
+                </select>
+                <p class="hint">Chỉ khả dụng khi chọn đúng 1 ứng dụng.</p>
+            </div>
+            <div>
+                <label for="fileInput">Đính kèm tệp (tuỳ chọn)</label>
+                <input id="fileInput" type="file" />
+                <p id="fileInfo" class="hint"></p>
+            </div>
+            <div style="display:flex; gap:0.75rem; align-items:center;">
+                <button type="submit" id="sendBtn">Gửi thông báo</button>
+                <button type="button" class="secondary" id="resetBtn">Làm mới form</button>
+            </div>
+        </form>
+    </section>
+</div>
 
-        <section class="card">
-            <h2>Gợi ý sử dụng nhanh</h2>
-            <p>
-                • API gửi multipart: <code>/api/control/send-notification</code><br />
-                • API gửi JSON: <code>/api/control/send-notification-json</code><br />
-                • Thêm bản phát hành ứng dụng: <code>/api/control/app-versions</code><br />
-                • Tham khảo thêm tài liệu tại <a class="inline-link" href="/swagger" target="_blank">/swagger</a>.
-            </p>
-        </section>
-    </main>
+<section class="card">
+    <h2>Kết quả / Log</h2>
+    <pre id="status" class="status">Chưa thực hiện thao tác nào.</pre>
+</section>
 
-    <script>
-        const form = document.getElementById('notifyForm');
-        const baseUrlInput = document.getElementById('baseUrl');
-        const payloadTypeInputs = form.elements['payloadType'];
-        const idInput = document.getElementById('notificationId');
-        const titleInput = document.getElementById('title');
-        const bodyInput = document.getElementById('body');
-        const linkInput = document.getElementById('link');
-        const appVersionSelect = document.getElementById('appVersionId');
-        const refreshAppVersionsBtn = document.getElementById('refreshAppVersions');
-        const appVersionDetails = document.getElementById('appVersionDetails');
-        const fileInput = document.getElementById('file');
-        const submitBtn = document.getElementById('submitBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const statusLine = document.getElementById('statusLine');
-        const requestPreview = document.getElementById('requestPreview');
-        const responsePreview = document.getElementById('responsePreview');
+<script>
+const state = {
+    baseUrl: '',
+    apps: [],
+    selected: new Set(),
+    versions: [],
+    file: null
+};
 
-        let appVersionMap = new Map();
+const apiBaseInput = document.getElementById('apiBase');
+const loadAppsBtn = document.getElementById('loadApps');
+const appsContainer = document.getElementById('appsContainer');
+const appsHint = document.getElementById('appsHint');
+const versionSelect = document.getElementById('versionSelect');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const statusEl = document.getElementById('status');
+const form = document.getElementById('sendForm');
+const resetBtn = document.getElementById('resetBtn');
 
-        const defaultBase = window.location.origin;
-        baseUrlInput.value = defaultBase;
+function normalizeBaseUrl(value) {
+    if (!value) return '';
+    return value.replace(/\/$/, '');
+}
 
-        function getPayloadType() {
-            return Array.from(payloadTypeInputs).find(r => r.checked)?.value ?? 'form';
-        }
+function updateStatus(message, data) {
+    const text = [message, data ? JSON.stringify(data, null, 2) : null]
+        .filter(Boolean)
+        .join('\n');
+    statusEl.textContent = text;
+}
 
-        function normalizeBaseUrl(value) {
-            return value.replace(/\/$/, '');
-        }
+async function fetchJson(path) {
+    if (!state.baseUrl) throw new Error('Chưa thiết lập máy chủ API.');
+    const response = await fetch(`${state.baseUrl}${path}`);
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`${response.status} ${response.statusText}: ${text}`);
+    }
+    return response.json();
+}
 
-        function buildPreview() {
-            const payloadType = getPayloadType();
-            const id = idInput.value.trim();
-            const title = titleInput.value.trim();
-            const body = bodyInput.value.trim();
-            const link = linkInput.value.trim();
-            const appVersionId = getSelectedAppVersionId();
-            const file = fileInput.files?.[0];
+function renderApps() {
+    appsContainer.innerHTML = '';
+    if (state.apps.length === 0) {
+        appsHint.style.display = 'block';
+        return;
+    }
+    appsHint.style.display = 'none';
+    state.apps.forEach(app => {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'app-item';
 
-            if (payloadType === 'json') {
-                const previewObj = {
-                    id: id || null,
-                    title,
-                    body,
-                    link: link || null,
-                    fileName: file ? file.name : null,
-                    fileBase64: file ? '(sẽ được sinh tự động khi gửi)' : null
-                };
-                if (appVersionId !== null) {
-                    previewObj.appVersionId = appVersionId;
-                }
-                let previewJson = JSON.stringify(previewObj, null, 2);
-                if (appVersionId === null) {
-                    previewJson += '\n// appVersionId sẽ không được gửi vì bạn để trống';
-                }
-                requestPreview.textContent = previewJson;
-            } else {
-                const lines = [
-                    'POST /api/control/send-notification',
-                    '',
-                    'FormData:',
-                    ` • title = ${title || '(trống)'}`,
-                    ` • body = ${body || '(trống)'}`,
-                    ` • id = ${id || '(không gửi)'}`,
-                    ` • link = ${link || '(không gửi)'}`,
-                    appVersionId !== null ? ` • appVersionId = ${appVersionId}` : ' • appVersionId = (không gửi)',
-                    file ? ` • file = ${file.name} (${Math.round(file.size / 1024)} KB)` : ' • file = (không gửi)'
-                ];
-                requestPreview.textContent = lines.join('\n');
-            }
-        }
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = app.appKey;
+        checkbox.checked = state.selected.has(app.appKey);
+        checkbox.addEventListener('change', () => toggleApp(app.appKey, checkbox.checked));
 
-        function getSelectedAppVersionId() {
-            const raw = appVersionSelect.value.trim();
-            if (!raw) return null;
-            const parsed = Number(raw);
-            if (!Number.isInteger(parsed) || parsed <= 0) return null;
-            return parsed;
-        }
+        const info = document.createElement('div');
+        info.innerHTML = `<strong>${app.displayName}</strong><br/><small>${app.appKey}</small>`;
 
-        function updateAppVersionDetails() {
-            const selected = appVersionSelect.value.trim();
-            if (!selected) {
-                if (appVersionMap.size === 0) {
-                    appVersionDetails.textContent = 'Chưa có bản phát hành nào. Hãy dùng API /api/control/app-versions để tạo trước.';
-                } else {
-                    appVersionDetails.textContent = 'Chưa chọn bản cập nhật. Thông báo sẽ được gửi như thông báo thường.';
-                }
-                return;
-            }
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(info);
+        appsContainer.appendChild(wrapper);
+    });
+}
 
-            const info = appVersionMap.get(selected);
-            if (!info) {
-                appVersionDetails.textContent = `ID ${selected} chưa nằm trong danh sách. Nhấn "Tải danh sách" để cập nhật dữ liệu mới nhất.`;
-                return;
-            }
+function toggleApp(appKey, isChecked) {
+    if (isChecked) {
+        state.selected.add(appKey);
+    } else {
+        state.selected.delete(appKey);
+    }
+    refreshVersionOptions();
+}
 
-            const lines = [
-                `ID #${info.id} · ${info.versionName}`
-            ];
+async function refreshVersionOptions() {
+    const selected = Array.from(state.selected);
+    versionSelect.innerHTML = '<option value="">-- Không gắn bản cập nhật --</option>';
+    versionSelect.disabled = selected.length !== 1;
+    state.versions = [];
 
-            if (info.releaseDate) {
-                const dt = new Date(info.releaseDate);
-                if (!Number.isNaN(dt.getTime())) {
-                    lines.push('Phát hành: ' + dt.toLocaleString());
-                }
-            }
-
-            if (info.releaseNotes) {
-                lines.push('Ghi chú: ' + info.releaseNotes);
-            }
-
-            if (info.fileUrl) {
-                lines.push('File: ' + info.fileUrl);
-            }
-
-            appVersionDetails.textContent = lines.join('\n');
-        }
-
-        async function loadAppVersions(showFeedback = true) {
-            const baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
-            if (!baseUrl) {
-                if (showFeedback) {
-                    statusLine.textContent = 'Vui lòng nhập địa chỉ máy chủ trước khi tải danh sách phiên bản.';
-                    statusLine.className = 'status-line error';
-                }
-                return;
-            }
-
-            const previousValue = appVersionSelect.value;
-            refreshAppVersionsBtn.disabled = true;
-            refreshAppVersionsBtn.textContent = 'Đang tải...';
-            appVersionSelect.disabled = true;
-
-            try {
-                const response = await fetch(`${baseUrl}/api/control/app-versions`);
-                if (!response.ok) {
-                    throw new Error(`${response.status} ${response.statusText}`);
-                }
-
-                const raw = await response.json();
-                const list = Array.isArray(raw) ? raw : [];
-
-                appVersionMap = new Map();
-                appVersionSelect.innerHTML = '';
-                const defaultOption = new Option('Không gắn với bản cập nhật', '');
-                appVersionSelect.appendChild(defaultOption);
-
-                for (const item of list) {
-                    const idValue = item?.appVersionId ?? item?.AppVersionId;
-                    if (!idValue) continue;
-                    const value = String(idValue);
-                    const versionName = item?.versionName ?? item?.VersionName ?? `Phiên bản #${value}`;
-                    const option = new Option(`${versionName} (#${value})`, value);
-                    appVersionSelect.appendChild(option);
-                    appVersionMap.set(value, {
-                        id: value,
-                        versionName,
-                        releaseNotes: item?.releaseNotes ?? item?.ReleaseNotes ?? '',
-                        fileUrl: item?.fileUrl ?? item?.FileUrl ?? '',
-                        releaseDate: item?.releaseDate ?? item?.ReleaseDate ?? ''
-                    });
-                }
-
-                if (previousValue && appVersionMap.has(previousValue)) {
-                    appVersionSelect.value = previousValue;
-                }
-
-                updateAppVersionDetails();
-                buildPreview();
-
-                if (showFeedback) {
-                    statusLine.textContent = `Đã tải ${appVersionMap.size} bản phát hành.`;
-                    statusLine.className = 'status-line';
-                }
-            } catch (error) {
-                appVersionMap = new Map();
-                appVersionSelect.innerHTML = '';
-                appVersionSelect.appendChild(new Option('Không gắn với bản cập nhật', ''));
-                updateAppVersionDetails();
-                if (showFeedback) {
-                    statusLine.textContent = 'Không tải được danh sách phiên bản: ' + (error?.message || error);
-                    statusLine.className = 'status-line error';
-                }
-            } finally {
-                refreshAppVersionsBtn.disabled = false;
-                refreshAppVersionsBtn.textContent = 'Tải danh sách';
-                appVersionSelect.disabled = false;
-            }
-        }
-
-        async function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result;
-                    if (typeof result === 'string') {
-                        const commaIndex = result.indexOf(',');
-                        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
-                    } else {
-                        reject(new Error('Không đọc được file.'));
-                    }
-                };
-                reader.onerror = () => reject(reader.error ?? new Error('Lỗi đọc file.'));
-                reader.readAsDataURL(file);
+    if (selected.length === 1) {
+        try {
+            const data = await fetchJson(`/api/control/app-versions?appKey=${encodeURIComponent(selected[0])}`);
+            state.versions = data;
+            data.forEach(ver => {
+                const option = document.createElement('option');
+                option.value = ver.appVersionId;
+                const platform = ver.platform ? ` [${ver.platform}]` : '';
+                option.textContent = `${ver.versionName}${platform} — ${new Date(ver.releaseDate).toLocaleString()}`;
+                versionSelect.appendChild(option);
             });
+        } catch (err) {
+            updateStatus('Không thể tải phiên bản:', err.message);
         }
+    }
+}
 
-        async function sendNotification(event) {
-            event.preventDefault();
+loadAppsBtn.addEventListener('click', async () => {
+    state.baseUrl = normalizeBaseUrl(apiBaseInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Vui lòng nhập địa chỉ máy chủ API.');
+        return;
+    }
+    try {
+        loadAppsBtn.disabled = true;
+        updateStatus('Đang tải danh sách ứng dụng...');
+        const data = await fetchJson('/api/control/applications');
+        state.apps = data;
+        renderApps();
+        updateStatus('Tải ứng dụng thành công.', data);
+    } catch (err) {
+        updateStatus('Lỗi tải ứng dụng:', err.message);
+    } finally {
+        loadAppsBtn.disabled = false;
+    }
+});
 
-            if (!form.reportValidity()) {
-                return;
-            }
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+        state.file = null;
+        fileInfo.textContent = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        state.file = { base64, name: file.name, size: file.size };
+        fileInfo.textContent = `Đã chọn ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    };
+    reader.onerror = () => {
+        state.file = null;
+        fileInfo.textContent = 'Không thể đọc tệp vừa chọn.';
+    };
+    reader.readAsDataURL(file);
+});
 
-            const baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
-            if (!baseUrl) {
-                statusLine.textContent = 'Vui lòng nhập địa chỉ máy chủ hợp lệ.';
-                statusLine.className = 'status-line error';
-                return;
-            }
+form.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    if (!state.baseUrl) {
+        alert('Chưa cấu hình máy chủ API.');
+        return;
+    }
+    const selected = Array.from(state.selected);
+    if (selected.length === 0) {
+        alert('Vui lòng chọn ít nhất một ứng dụng.');
+        return;
+    }
 
-            const payloadType = getPayloadType();
-            const id = idInput.value.trim();
-            const title = titleInput.value.trim();
-            const body = bodyInput.value.trim();
-            const link = linkInput.value.trim();
-            const appVersionId = getSelectedAppVersionId();
-            const file = fileInput.files?.[0];
+    const payload = {
+        title: document.getElementById('title').value.trim(),
+        body: document.getElementById('body').value.trim(),
+        link: document.getElementById('link').value.trim() || null,
+        fileBase64: state.file ? state.file.base64 : null,
+        fileName: state.file ? state.file.name : null,
+        targets: selected.map(appKey => ({
+            appKey,
+            appVersionId: null
+        }))
+    };
 
-            submitBtn.disabled = true;
-            resetBtn.disabled = true;
-            statusLine.textContent = 'Đang gửi thông báo...';
-            statusLine.className = 'status-line';
-            responsePreview.textContent = 'Đang chờ phản hồi từ máy chủ...';
-
-            try {
-                let url;
-                let options;
-
-                if (payloadType === 'json') {
-                    url = `${baseUrl}/api/control/send-notification-json`;
-                    let fileBase64 = null;
-                    if (file) {
-                        fileBase64 = await fileToBase64(file);
-                    }
-
-                    const payload = {
-                        id: id || null,
-                        title,
-                        body,
-                        link: link || null,
-                        fileName: file ? file.name : null,
-                        fileBase64
-                    };
-                    if (appVersionId !== null) {
-                        payload.appVersionId = appVersionId;
-                    }
-
-                    requestPreview.textContent = JSON.stringify(payload, null, 2);
-
-                    options = {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    };
-                } else {
-                    url = `${baseUrl}/api/control/send-notification`;
-                    const formData = new FormData();
-                    formData.append('title', title);
-                    formData.append('body', body);
-                    if (id) formData.append('id', id);
-                    if (link) formData.append('link', link);
-                    if (appVersionId !== null) formData.append('appVersionId', appVersionId.toString());
-                    if (file) formData.append('file', file, file.name);
-
-                    const lines = [
-                        'POST ' + new URL(url).pathname,
-                        '',
-                        'FormData:',
-                        ` • title = ${title}`,
-                        ` • body = ${body}`,
-                        id ? ` • id = ${id}` : ' • id = (không gửi)',
-                        ` • link = ${link || '(không gửi)'}`,
-                        appVersionId !== null ? ` • appVersionId = ${appVersionId}` : ' • appVersionId = (không gửi)',
-                        file ? ` • file = ${file.name} (${Math.round(file.size / 1024)} KB)` : ' • file = (không gửi)'
-                    ];
-                    requestPreview.textContent = lines.join('\n');
-
-                    options = {
-                        method: 'POST',
-                        body: formData
-                    };
-                }
-
-                const response = await fetch(url, options);
-                const text = await response.text();
-                let bodyText = text;
-                try {
-                    bodyText = JSON.stringify(JSON.parse(text), null, 2);
-                } catch (_) {
-                    // giữ nguyên text nếu không phải JSON
-                }
-
-                statusLine.textContent = `Hoàn thành: ${response.status} ${response.statusText}`;
-                statusLine.className = response.ok ? 'status-line success' : 'status-line error';
-                responsePreview.textContent = bodyText || '(Không có nội dung phản hồi)';
-
-                if (response.ok) {
-                    form.reset();
-                    baseUrlInput.value = baseUrl;
-                    buildPreview();
-                }
-            } catch (error) {
-                statusLine.textContent = 'Lỗi: ' + (error?.message || error);
-                statusLine.className = 'status-line error';
-                responsePreview.textContent = 'Không gửi được request tới máy chủ.';
-            } finally {
-                submitBtn.disabled = false;
-                resetBtn.disabled = false;
-            }
+    if (selected.length === 1) {
+        const ver = versionSelect.value;
+        if (ver) {
+            payload.targets[0].appVersionId = Number(ver);
         }
+    }
 
-        function resetForm() {
-            form.reset();
-            baseUrlInput.value = defaultBase;
-            responsePreview.textContent = 'Chưa có phản hồi.';
-            statusLine.textContent = 'Đã xoá nội dung form.';
-            statusLine.className = 'status-line';
-            buildPreview();
-        }
-
-        form.addEventListener('submit', sendNotification);
-        resetBtn.addEventListener('click', resetForm);
-
-        [baseUrlInput, idInput, titleInput, bodyInput, linkInput].forEach(input => {
-            input.addEventListener('input', buildPreview);
+    try {
+        updateStatus('Đang gửi thông báo...', payload);
+        const response = await fetch(`${state.baseUrl}/api/control/send-notification-json`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
-        appVersionSelect.addEventListener('change', () => {
-            updateAppVersionDetails();
-            buildPreview();
-        });
-        refreshAppVersionsBtn.addEventListener('click', () => loadAppVersions(true));
-        baseUrlInput.addEventListener('change', () => loadAppVersions(false));
-        Array.from(payloadTypeInputs).forEach(r => r.addEventListener('change', buildPreview));
-        fileInput.addEventListener('change', buildPreview);
+        const text = await response.text();
+        let data = text;
+        try { data = JSON.parse(text); } catch {}
+        if (!response.ok) {
+            throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+        }
+        updateStatus('Gửi thành công:', data);
+        form.reset();
+        fileInfo.textContent = '';
+        state.file = null;
+    } catch (err) {
+        updateStatus('Gửi thất bại:', err.message);
+    }
+});
 
-        buildPreview();
-        updateAppVersionDetails();
-        loadAppVersions(false);
-    </script>
+resetBtn.addEventListener('click', () => {
+    form.reset();
+    state.file = null;
+    fileInfo.textContent = '';
+    updateStatus('Đã đặt lại form.');
+});
+</script>
 </body>
 </html>

@@ -19,12 +19,16 @@ public class Notification
 
     public DateTime CreatedAt { get; set; }
 
+    public int ApplicationId { get; set; }
+
     public int? AppVersionId { get; set; }
 
     [MaxLength(255)]
     public string? FileUrl { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public Application Application { get; set; } = default!;
 
     public AppVersion? AppVersion { get; set; }
 }

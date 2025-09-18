@@ -1,278 +1,187 @@
 # RemoteControlApi
 
-Hệ thống cung cấp backend quản lý thông báo và cập nhật ứng dụng cho thiết bị di động. Ứng dụng ASP.NET Core 8.0 sử dụng Entity Framework Core để tự động khởi tạo/ cập nhật schema CSDL khi dịch vụ chạy.
+Hệ thống backend gửi thông báo và quản lý cập nhật ứng dụng cho nhiều sản phẩm khác nhau (đa ứng dụng tương tự GoTyfi). Ứng dụng được phát triển với ASP.NET Core 8, Entity Framework Core và tự động áp dụng migration ngay khi dịch vụ khởi động.
 
-## 1. Kết nối & tự động migration
-- **Connection string** được khai báo trong `appsettings*.json` với key `ConnectionStrings:AppDatabase`:
+## 1. Kết nối CSDL & Migration tự động
+- Chuỗi kết nối SQL Server được cấu hình trong `appsettings*.json` với key `ConnectionStrings:AppDatabase`. Ví dụ:
   ```text
   Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertificate=True
   ```
-- Ở `Program.cs`, dịch vụ được cấu hình `UseSqlServer(...)` và luôn gọi `Database.MigrateAsync()` khi khởi động ⇒ mọi migration mới sẽ được áp dụng tự động.
-- Migration đầu tiên (`20240717000000_InitialCreate`) tạo bảng; dữ liệu thực tế sẽ do admin hoặc tác vụ nền tự thêm sau khi triển khai.
+- `Program.cs` đăng ký `AppDbContext` sử dụng `UseSqlServer(...)` và gọi `Database.MigrateAsync()` khi ứng dụng khởi động ⇒ mọi thay đổi schema (migration) sẽ được áp dụng tự động. Ứng dụng không seed dữ liệu mẫu: bạn cần tạo ứng dụng, phiên bản và thông báo thật sau khi triển khai.
 
-## 2. Mô hình dữ liệu
-Hệ thống gồm hai bảng chính với quan hệ 1-n:
+## 2. Mô hình dữ liệu đa ứng dụng
+Hệ thống hỗ trợ nhiều ứng dụng độc lập. Mỗi ứng dụng có bộ bản phát hành và thông báo riêng.
 
-### 2.1 AppVersions
-Lưu thông tin mỗi bản phát hành ứng dụng.
+### 2.1 Bảng `Applications`
+Lưu thông tin định danh của từng ứng dụng.
 ```sql
-CREATE TABLE AppVersions (
-    AppVersionId   INT IDENTITY(1,1) PRIMARY KEY,
-    VersionName    NVARCHAR(50)  NOT NULL,
-    ReleaseNotes   NVARCHAR(MAX) NULL,
-    FileUrl        NVARCHAR(255) NOT NULL,
-    FileChecksum   NVARCHAR(128) NULL,
-    ReleaseDate    DATETIME2     NOT NULL
+CREATE TABLE Applications (
+    ApplicationId INT IDENTITY(1,1) PRIMARY KEY,
+    AppKey        NVARCHAR(100) NOT NULL UNIQUE,   -- định danh dạng "gotyfi", "myapp"
+    DisplayName   NVARCHAR(150) NOT NULL,
+    Description   NVARCHAR(500) NULL,
+    CreatedAt     DATETIME2     NOT NULL,
+    IsActive      BIT           NOT NULL DEFAULT 1
 );
 ```
 
-### 2.2 Notifications
-Lưu thông báo gửi đến người dùng, có thể gắn với một bản cập nhật cụ thể.
+### 2.2 Bảng `AppVersions`
+Quản lý các bản phát hành cho từng ứng dụng/ nền tảng.
+```sql
+CREATE TABLE AppVersions (
+    AppVersionId INT IDENTITY(1,1) PRIMARY KEY,
+    ApplicationId INT NOT NULL FOREIGN KEY REFERENCES Applications(ApplicationId) ON DELETE CASCADE,
+    VersionName  NVARCHAR(50)  NOT NULL,
+    Platform     NVARCHAR(30)  NULL,             -- ví dụ: android, ios
+    ReleaseNotes NVARCHAR(MAX) NULL,
+    FileUrl      NVARCHAR(255) NOT NULL,         -- link tải gói cài đặt
+    FileChecksum NVARCHAR(128) NULL,             -- SHA256 để kiểm tra
+    ReleaseDate  DATETIME2     NOT NULL,
+    CONSTRAINT UK_AppVersion UNIQUE (ApplicationId, VersionName, Platform)
+);
+```
+
+### 2.3 Bảng `Notifications`
+Lưu thông báo gửi tới người dùng của từng ứng dụng.
 ```sql
 CREATE TABLE Notifications (
     NotificationId INT IDENTITY(1,1) PRIMARY KEY,
+    ApplicationId  INT NOT NULL FOREIGN KEY REFERENCES Applications(ApplicationId) ON DELETE CASCADE,
+    AppVersionId   INT NULL FOREIGN KEY REFERENCES AppVersions(AppVersionId) ON DELETE SET NULL,
     Title          NVARCHAR(100) NOT NULL,
     Message        NVARCHAR(MAX) NOT NULL,
     Link           NVARCHAR(255) NULL,
-    CreatedAt      DATETIME2     NOT NULL,
-    AppVersionId   INT           NULL,
     FileUrl        NVARCHAR(255) NULL,
-    IsActive       BIT           NOT NULL DEFAULT 1,
-    CONSTRAINT FK_Notifications_AppVersions_AppVersionId
-        FOREIGN KEY (AppVersionId)
-        REFERENCES AppVersions(AppVersionId)
-        ON DELETE SET NULL
+    CreatedAt      DATETIME2 NOT NULL,
+    IsActive       BIT NOT NULL DEFAULT 1
 );
 ```
+Mỗi thông báo gắn với đúng một ứng dụng. Nếu cần gửi cùng nội dung cho nhiều app, API sẽ nhân bản và ghi nhiều bản ghi vào bảng `Notifications` (mỗi bản ghi ứng với một `AppKey`).
 
-### 2.3 Quản lý dữ liệu
-Ngay sau khi migration được áp dụng, hệ thống không tự thêm dữ liệu mẫu. Admin có thể tạo bản ghi `AppVersions` và `Notifications` thông qua dashboard, script riêng hoặc trực tiếp gọi API quản trị (`POST /api/control/app-versions`, `POST /api/control/send-notification*`).
+## 3. Luồng nghiệp vụ chính
+1. **Tạo ứng dụng mới**
+   - Gọi `POST /api/control/applications` để đăng ký `AppKey` và tên hiển thị.
+   - Sau khi tạo thành công, tất cả các API còn lại đều yêu cầu tham số `appKey` để định danh ứng dụng.
 
-## 3. Luồng chính
-1. **Admin phát hành bản mới**
-   - Upload gói cài đặt qua `POST /api/control/app-version/upload`.
-   - (Tuỳ chọn) tạo thông báo gắn `AppVersionId` tương ứng.
-   - Dữ liệu được ghi vào `AppVersions` và `Notifications`.
+2. **Phát hành phiên bản ứng dụng**
+   - Gọi `POST /api/control/app-versions` với `appKey`, `versionName`, `platform`, `fileUrl`, `releaseDate`,… để lưu bản phát hành.
+   - API đảm bảo không trùng `versionName` trong cùng một ứng dụng + nền tảng.
 
-2. **Admin gửi thông báo thường**
-   - Gửi JSON hoặc multipart tới `POST /api/control/send-notification-json` / `send-notification`.
-   - Backend lưu bản ghi mới trong `Notifications` (IsActive = 1).
+3. **Gửi thông báo**
+   - Gửi request JSON tới `POST /api/control/send-notification-json` chứa tiêu đề, nội dung và danh sách ứng dụng nhận (`targets`).
+   - Một thông báo có thể gửi cho nhiều ứng dụng trong cùng request; backend tự tạo bản ghi riêng cho từng app và kiểm tra `appVersionId` (nếu có) phải thuộc ứng dụng tương ứng.
+   - Tệp đính kèm tuỳ chọn (`fileBase64`, `fileName`). Backend lưu file tại `wwwroot/uploads` và trả về `fileUrl` để client tải.
 
-3. **Client lấy danh sách thông báo**
-   - Gọi `GET /api/control/get-notifications?page=1&pageSize=20`.
-   - Server chỉ trả các bản ghi `IsActive=1`, sắp xếp mới nhất trước và join thông tin phiên bản nếu có.
-   - Ví dụ JSON bên dưới chỉ mang tính minh hoạ; dữ liệu thực tế phụ thuộc vào các bản ghi mà admin đã thêm.
+4. **Ứng dụng client lấy thông báo**
+   - Gọi `GET /api/control/get-notifications?appKey=<app>` để nhận danh sách thông báo đang kích hoạt, có phân trang.
+   - Nếu thông báo gắn bản cập nhật, phản hồi sẽ chứa block `appVersion` (versionName, releaseNotes, fileUrl, …) để client hiển thị nút cập nhật.
 
-4. **Client kiểm tra cập nhật**
-   - Gọi `GET /api/control/check-app-version?currentVersion=<phiên bản hiện tại>`.
-   - Server đối chiếu với bản phát hành mới nhất trong `AppVersions` để quyết định có update không.
-
-5. **Realtime (tuỳ chọn)**
-   - Client mở kết nối SSE tới `GET /api/control/notifications-stream` để nhận thông báo ngay khi admin gửi.
+5. **Ứng dụng kiểm tra cập nhật**
+   - Gọi `GET /api/control/check-app-version?appKey=<app>&currentVersion=<phiên bản hiện tại>`.
+   - API trả về `updateAvailable`, `serverVersion` và thông tin chi tiết bản phát hành mới nhất của ứng dụng đó.
 
 ## 4. Tài liệu API
-Mọi endpoint đều có sẵn trong Swagger (`/swagger`). Dưới đây là tóm tắt các API chính kèm ví dụ cURL.
+Swagger khả dụng tại `/swagger` sau khi dịch vụ chạy. Bảng dưới tóm tắt các endpoint quan trọng cùng ví dụ sử dụng.
 
-### 4.1 API cho Admin/Server
-
-#### Gửi thông báo JSON
-```
-POST /api/control/send-notification-json
-Content-Type: application/json
-```
-```bash
-curl -X POST "https://<host>/api/control/send-notification-json" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "title": "🔧 Bảo trì hệ thống",
-        "body": "Hệ thống bảo trì lúc 23h ngày 20/09",
-        "link": "https://status.myapp.com/maintenance",
-        "appVersionId": null,
-        "fileBase64": null,
-        "fileName": null
-      }'
-```
-**Phản hồi**
-```json
-{
-  "status": "Notification received",
-  "message": {
-    "id": "c6f9...",
-    "title": "🔧 Bảo trì hệ thống",
-    "body": "Hệ thống bảo trì lúc 23h ngày 20/09",
-    "timestampUtc": "2025-09-17T12:34:56.789Z",
-    "fileUrl": null
-  }
-}
-```
-Các trường `link` và `appVersionId` là tuỳ chọn: nếu không cần chuyển hướng hay gắn với bản cập nhật cụ thể, hãy đặt `null`/bỏ qua.
-
-#### Gửi thông báo multipart (đính kèm tệp)
-```
-POST /api/control/send-notification
-Content-Type: multipart/form-data
-```
-```bash
-curl -X POST "https://<host>/api/control/send-notification" \
-  -F "title=🎯 Khuyến mãi" \
-  -F "body=Giảm 30% cho người dùng mới" \
-  -F "link=https://status.myapp.com/promo" \
-  -F "appVersionId=3" \
-  -F "file=@banner.png"
-```
-Chỉ gửi các trường `link`, `appVersionId`, `file` khi thật sự cần thiết; mọi trường khác đều là bắt buộc.
-
-#### Xoá toàn bộ thông báo
-```bash
-curl -X POST "https://<host>/api/control/clear-notifications"
-```
-Kết quả:
-```json
-{ "status": "Cleared" }
-```
-
-#### Upload bản cài đặt mới
-```
-POST /api/control/app-version/upload
-Content-Type: multipart/form-data
-```
-```bash
-curl -X POST "https://<host>/api/control/app-version/upload" \
-  -F "latest=1.3.0" \
-  -F "minSupported=1.1.0" \
-  -F "notesVi=Thêm tính năng A, tối ưu hiệu năng" \
-  -F "platform=android" \
-  -F "file=@app-release.apk"
-```
-Phản hồi chứa thông tin file được lưu, checksum SHA256 và build number mới.
-
-#### Tạo bản phát hành trong bảng AppVersions (JSON)
-```text
-POST /api/control/app-versions
-Content-Type: application/json
-```
-```bash
-curl -X POST "https://<host>/api/control/app-versions" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "versionName": "1.3.0",
-        "releaseNotes": "Bổ sung tính năng A, cải thiện hiệu năng",
-        "fileUrl": "https://cdn.myapp.com/app/v1.3.0.apk",
-        "fileChecksum": "de305d5475b4431b93285f8b8f66ccf3",
-        "releaseDate": "2025-10-01T09:00:00Z"
-      }'
-```
-`releaseDate` chấp nhận chuỗi ISO8601; nếu không chỉ rõ múi giờ, hệ thống sẽ mặc định coi là UTC.
-
-**Phản hồi mẫu**
-```json
-{
-  "appVersionId": 4,
-  "versionName": "1.3.0",
-  "releaseNotes": "Bổ sung tính năng A, cải thiện hiệu năng",
-  "fileUrl": "https://cdn.myapp.com/app/v1.3.0.apk",
-  "fileChecksum": "de305d5475b4431b93285f8b8f66ccf3",
-  "releaseDate": "2025-10-01T09:00:00Z"
-}
-```
-
-#### Liệt kê các bản phát hành hiện có
-```bash
-curl "https://<host>/api/control/app-versions"
-```
-Máy chủ trả về danh sách được sắp xếp theo `releaseDate` mới nhất trước.
-
-#### Giao diện gửi thông báo thủ công
-- Mở trình duyệt tới `https://<host>/send.html`.
-- Nhập `Máy chủ API` rồi bấm **Tải danh sách** để lấy danh sách `AppVersions` hiện có; nếu bảng trống, cần tạo bản phát hành qua API trước.
-- Chọn bản cập nhật cần gắn hoặc để trống để gửi thông báo thường, sau đó hoàn thiện nội dung và nhấn **Gửi thông báo**. Preview bên trái sẽ hiển thị chính xác payload được gửi đi.
-
-### 4.2 API cho Client/App
-
-#### Lấy danh sách thông báo (có phân trang)
-```bash
-curl "https://<host>/api/control/get-notifications?page=1&pageSize=2"
-```
-```json
-{
-  "total": 3,
-  "page": 1,
-  "pageSize": 2,
-  "items": [
-    {
-      "notificationId": 4,
-      "title": "🔧 Bảo trì hệ thống",
-      "message": "Hệ thống sẽ bảo trì 23h ngày 20/09",
-      "createdAt": "2025-09-17T12:00:00Z",
-      "fileUrl": null,
-      "appVersion": null
-    },
-    {
-      "notificationId": 3,
-      "title": "⚡ Cập nhật 1.2.0",
-      "message": "Fix lỗi đăng nhập + UI dark mode",
-      "createdAt": "2025-09-17T09:30:00Z",
-      "fileUrl": null,
-      "appVersion": {
-        "appVersionId": 3,
-        "versionName": "1.2.0",
-        "releaseNotes": "Fix lỗi đăng nhập, UI tối ưu",
-        "fileUrl": "https://example.com/v1.2.0.apk",
-        "fileChecksum": "c3d4e5",
-        "releaseDate": "2025-09-17T09:30:00Z"
-      }
-    }
-  ]
-}
-```
-
-#### Nhận thông báo realtime (Server-Sent Events)
-```bash
-curl -N "https://<host>/api/control/notifications-stream"
-```
-Server sẽ đẩy từng thông báo dạng:
-```
-data: {"id":"...","title":"...","body":"...","timestampUtc":"..."}
-```
-
-#### Kiểm tra bản cập nhật
-```bash
-curl "https://<host>/api/control/check-app-version?currentVersion=1.1.0"
-```
-```json
-{
-  "currentVersion": "1.1.0",
-  "serverVersion": "1.2.0",
-  "updateAvailable": true,
-  "comparisonNote": null,
-  "latestRelease": {
-    "appVersionId": 3,
-    "versionName": "1.2.0",
-    "releaseNotes": "Fix lỗi đăng nhập, UI tối ưu",
-    "fileUrl": "https://example.com/v1.2.0.apk",
-    "fileChecksum": "c3d4e5",
-    "releaseDate": "2025-09-17T09:30:00Z"
-  }
-}
-```
-
-#### Lấy manifest phiên bản hiện tại
-```bash
-curl "https://<host>/api/control/app-version"
-```
-Trả về thông tin `latest`, `minSupported`, ghi chú và danh sách file được upload gần nhất.
-
-#### Tải gói cài đặt mới nhất
-```bash
-curl -OJ "https://<host>/api/control/app-version/download?platform=android"
-```
-- Có thể gửi `HEAD` để kiểm tra kích thước & checksum trước khi tải:
+### 4.1 Quản lý ứng dụng
+- **Danh sách ứng dụng**
   ```bash
-  curl -I "https://<host>/api/control/app-version/download?platform=android"
+  curl "https://<host>/api/control/applications"
+  ```
+- **Tạo ứng dụng**
+  ```bash
+  curl -X POST "https://<host>/api/control/applications" \
+    -H "Content-Type: application/json" \
+    -d '{
+          "appKey": "gotyfi",
+          "displayName": "GoTyfi",
+          "description": "Ứng dụng đặt xe"
+        }'
   ```
 
-## 5. Ghi chú vận hành
-- Tất cả endpoint mặc định không bật HTTPS khi chạy local; nếu deploy reverse proxy hãy cấu hình lại theo môi trường thực tế.
-- Thư mục `wwwroot/uploads` chứa file đính kèm trong thông báo, còn `Builds/` chứa các gói ứng dụng upload.
-- Khi cần bổ sung bảng hoặc quan hệ mới, hãy tạo migration EF Core rồi deploy; dịch vụ sẽ tự động cập nhật schema nhờ `Database.MigrateAsync()`.
+### 4.2 Quản lý phiên bản
+- **Thêm bản phát hành**
+  ```bash
+  curl -X POST "https://<host>/api/control/app-versions" \
+    -H "Content-Type: application/json" \
+    -d '{
+          "appKey": "gotyfi",
+          "versionName": "1.2.0",
+          "platform": "android",
+          "fileUrl": "https://cdn.example.com/gotyfi/v1.2.0.apk",
+          "releaseNotes": "Sửa lỗi đăng nhập",
+          "releaseDate": "2025-09-17T09:30:00Z"
+        }'
+  ```
+- **Liệt kê bản phát hành của một ứng dụng**
+  ```bash
+  curl "https://<host>/api/control/app-versions?appKey=gotyfi"
+  ```
+- **Kiểm tra cập nhật trên client**
+  ```bash
+  curl "https://<host>/api/control/check-app-version?appKey=gotyfi&currentVersion=1.1.0"
+  ```
 
+### 4.3 Gửi & nhận thông báo
+- **Gửi thông báo tới nhiều ứng dụng**
+  ```bash
+  curl -X POST "https://<host>/api/control/send-notification-json" \
+    -H "Content-Type: application/json" \
+    -d '{
+          "title": "🚀 Cập nhật mới",
+          "body": "Đã có phiên bản 1.2.0",
+          "link": "https://example.com/changelog",
+          "fileBase64": null,
+          "fileName": null,
+          "targets": [
+            { "appKey": "gotyfi", "appVersionId": 5 },
+            { "appKey": "gotyfi-driver" }
+          ]
+        }'
+  ```
+  *Lưu ý:* Nếu `targets` chỉ chứa một ứng dụng, bạn có thể cung cấp `appVersionId` để thông báo hiển thị chi tiết bản cập nhật tương ứng.
+
+- **Lấy danh sách thông báo cho một ứng dụng**
+  ```bash
+  curl "https://<host>/api/control/get-notifications?appKey=gotyfi&page=1&pageSize=20"
+  ```
+  Phản hồi:
+  ```json
+  {
+    "total": 2,
+    "page": 1,
+    "pageSize": 20,
+    "items": [
+      {
+        "notificationId": 42,
+        "title": "🚀 Cập nhật mới",
+        "message": "Đã có phiên bản 1.2.0",
+        "createdAt": "2025-09-17T09:35:00Z",
+        "link": "https://example.com/changelog",
+        "fileUrl": null,
+        "appKey": "gotyfi",
+        "appName": "GoTyfi",
+        "appVersion": {
+          "appVersionId": 5,
+          "versionName": "1.2.0",
+          "platform": "android",
+          "releaseNotes": "Sửa lỗi đăng nhập",
+          "fileUrl": "https://cdn.example.com/gotyfi/v1.2.0.apk",
+          "releaseDate": "2025-09-17T09:30:00Z"
+        }
+      }
+    ]
+  }
+  ```
+
+- **Xoá thông báo**
+  ```bash
+  curl -X POST "https://<host>/api/control/clear-notifications?appKey=gotyfi"
+  ```
+
+## 5. Giao diện tĩnh (tuỳ chọn)
+Thư mục `wwwroot` chứa:
+- `send.html`: bảng điều khiển gửi thông báo, cho phép chọn nhiều ứng dụng, tự động tải danh sách phiên bản khi chọn 1 ứng dụng.
+- `receive.html`: giao diện xem thông báo và kiểm tra cập nhật theo từng ứng dụng.
+
+Các trang này chỉ là công cụ hỗ trợ quản trị viên, mọi dữ liệu thực tế vẫn do bạn thêm thông qua API hoặc giao diện riêng của hệ thống.
