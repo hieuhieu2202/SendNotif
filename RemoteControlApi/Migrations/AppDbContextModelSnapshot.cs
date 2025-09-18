@@ -175,7 +175,7 @@ namespace RemoteControlApi.Migrations
                     b.HasOne("RemoteControlApi.Entities.AppVersion", "AppVersion")
                         .WithMany("Notifications")
                         .HasForeignKey("AppVersionId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Application");
 

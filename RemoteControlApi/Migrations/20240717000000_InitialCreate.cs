@@ -84,7 +84,7 @@ public partial class InitialCreate : Migration
                     column: x => x.AppVersionId,
                     principalTable: "AppVersions",
                     principalColumn: "AppVersionId",
-                    onDelete: ReferentialAction.SetNull);
+                    onDelete: ReferentialAction.NoAction);
             });
 
         migrationBuilder.CreateIndex(

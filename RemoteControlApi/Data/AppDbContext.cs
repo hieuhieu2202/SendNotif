@@ -95,7 +95,7 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.AppVersion)
                 .WithMany(v => v.Notifications)
                 .HasForeignKey(e => e.AppVersionId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
     }
 }
