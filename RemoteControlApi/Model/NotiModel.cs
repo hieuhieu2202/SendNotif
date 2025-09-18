@@ -17,7 +17,7 @@ public static class NotiModel
         public string? Link { get; set; }
 
         [MinLength(1, ErrorMessage = "Cần ít nhất một ứng dụng nhận thông báo.")]
-        public List<NotificationTarget> Targets { get; set; } = new();
+        public List<NotificationTarget> Targets { get; set; } = [];
 
         public string? FileBase64 { get; set; }
 

@@ -13,20 +13,14 @@ namespace RemoteControlApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ControlController : ControllerBase
+public class ControlController(AppDbContext dbContext, IWebHostEnvironment environment, INotificationStream notificationStream) : ControllerBase
 {
     private static readonly JsonSerializerOptions SseJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly char[] AppKeySeparators = { ',', ';', '\n', '\r' };
 
-    private readonly AppDbContext _dbContext;
-    private readonly IWebHostEnvironment _environment;
-    private readonly INotificationStream _notificationStream;
-
-    public ControlController(AppDbContext dbContext, IWebHostEnvironment environment, INotificationStream notificationStream)
-    {
-        _dbContext = dbContext;
-        _environment = environment;
-        _notificationStream = notificationStream;
-    }
+    private readonly AppDbContext _dbContext = dbContext;
+    private readonly IWebHostEnvironment _environment = environment;
+    private readonly INotificationStream _notificationStream = notificationStream;
 
     #region Applications
 
@@ -109,10 +103,8 @@ public class ControlController : ControllerBase
     {
         var normalizedKey = NormalizeAppKey(appKey);
 
-        var query = _dbContext.AppVersions
-            .AsNoTracking()
-            .OrderByDescending(v => v.ReleaseDate)
-            .ThenByDescending(v => v.AppVersionId);
+        IQueryable<AppVersion> query = _dbContext.AppVersions
+            .AsNoTracking();
 
         if (!string.IsNullOrEmpty(normalizedKey))
         {
@@ -120,6 +112,8 @@ public class ControlController : ControllerBase
         }
 
         var versions = await query
+            .OrderByDescending(v => v.ReleaseDate)
+            .ThenByDescending(v => v.AppVersionId)
             .Select(v => new
             {
                 v.AppVersionId,
@@ -328,7 +322,7 @@ public class ControlController : ControllerBase
 
     [HttpPost("send-notification")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> SendNotificationForm([FromForm] SendNotificationForm form)
+    public async Task<IActionResult> SendNotificationMultipart([FromForm] SendNotificationForm form)
     {
         var targets = NormalizeAppKeyList(form.Id);
         if (targets.Count == 0)
@@ -568,7 +562,7 @@ public class ControlController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
-        var notifications = new List<Notification>();
+        List<Notification> notifications = [];
 
         foreach (var target in message.Targets)
         {
@@ -590,7 +584,7 @@ public class ControlController : ControllerBase
         _dbContext.Notifications.AddRange(notifications);
         await _dbContext.SaveChangesAsync();
 
-        var result = new List<object>();
+        List<object> result = [];
         foreach (var notification in notifications)
         {
             var application = appsById[notification.ApplicationId];
@@ -694,7 +688,7 @@ public class ControlController : ControllerBase
     private void SetNoCache()
     {
         var headers = Response.GetTypedHeaders();
-        headers.CacheControl = new CacheControlHeaderValue
+        headers.CacheControl = new()
         {
             NoCache = true,
             NoStore = true,
@@ -715,11 +709,11 @@ public class ControlController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return new List<string>();
+            return [];
         }
 
         return value
-            .Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split(AppKeySeparators, StringSplitOptions.RemoveEmptyEntries)
             .Select(NormalizeAppKey)
             .Where(k => !string.IsNullOrEmpty(k))
             .Distinct()

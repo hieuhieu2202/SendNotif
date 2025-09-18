@@ -23,7 +23,7 @@ public class Application
 
     public bool IsActive { get; set; } = true;
 
-    public ICollection<AppVersion> AppVersions { get; set; } = new List<AppVersion>();
+    public ICollection<AppVersion> AppVersions { get; set; } = [];
 
-    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public ICollection<Notification> Notifications { get; set; } = [];
 }

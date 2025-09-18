@@ -32,7 +32,7 @@ public interface INotificationStream
     Task PublishAsync(NotificationStreamEvent @event, CancellationToken cancellationToken = default);
 }
 
-public class NotificationStream : INotificationStream
+public class NotificationStream() : INotificationStream
 {
     private readonly ConcurrentDictionary<Guid, Channel<NotificationStreamEvent>> _channels = new();
 
