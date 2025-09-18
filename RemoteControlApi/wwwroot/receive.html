@@ -1,126 +1,333 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <title>Notifications</title>
+    <title>Giám sát thông báo ứng dụng</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        :root {
+            color-scheme: light dark;
+            font-family: "Inter", system-ui, sans-serif;
+        }
         body {
-            font-family: system-ui, Arial, sans-serif;
-            margin: 24px;
+            margin: 0;
+            background: #f2f4f8;
+            color: #111827;
+            padding: 1.5rem;
         }
-
-        ul {
-            padding-left: 18px;
+        header {
+            margin-bottom: 1.5rem;
         }
-
-        li {
-            margin: 10px 0;
+        h1 {
+            margin: 0;
+            font-size: 1.9rem;
         }
-
-        .preview-container {
-            margin-top: 6px;
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 10px 24px rgba(15, 32, 75, 0.12);
+            margin-bottom: 1.25rem;
         }
-
-        img, video, iframe {
-            max-width: 560px;
-            max-height: 340px;
+        label {
+            font-weight: 600;
             display: block;
+            margin-bottom: 0.35rem;
+        }
+        input, select, button {
+            font-size: 0.95rem;
+        }
+        input[type="text"],
+        input[type="url"],
+        select {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #cbd5f5;
+            box-sizing: border-box;
+        }
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+        button.secondary {
+            background: transparent;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        @media (min-width: 992px) {
+            .grid-columns-2 {
+                grid-template-columns: 3fr 2fr;
+            }
+        }
+        .notif-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .notif-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 0.9rem 1rem;
+            background: #fdfdfd;
+        }
+        .notif-item h3 {
+            margin: 0 0 0.35rem;
+            font-size: 1.05rem;
+        }
+        .notif-meta {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 0.35rem;
+        }
+        .notif-body {
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+        }
+        .update-block {
+            margin-top: 0.6rem;
+            background: #ecfdf5;
+            border-left: 4px solid #34d399;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .status {
+            background: #0b1120;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 8px;
+            min-height: 120px;
+            white-space: pre-wrap;
+        }
+        .hint {
+            font-size: 0.85rem;
+            color: #4b5563;
         }
     </style>
 </head>
 <body>
-    <h1>Notifications</h1>
-    <ul id="list"></ul>
+<header>
+    <h1>Trung tâm nhận thông báo</h1>
+    <p class="hint">Thiết lập máy chủ API và app key để xem thông báo, kiểm tra bản cập nhật, hoặc kết nối realtime.</p>
+</header>
 
-    <script>
-        const list = document.getElementById('list');
+<section class="card">
+    <div class="grid" style="gap:0.85rem;">
+        <div>
+            <label for="baseUrl">Máy chủ API</label>
+            <input id="baseUrl" type="url" placeholder="https://example.com" />
+        </div>
+        <div>
+            <label for="appKey">App Key</label>
+            <input id="appKey" type="text" placeholder="vd: gotyfi" list="appKeyList" />
+            <datalist id="appKeyList"></datalist>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+            <button id="btnLoadApps" type="button">Tải app key</button>
+            <button id="btnLoad" type="button">Tải thông báo</button>
+            <button id="btnRefresh" type="button" class="secondary">Làm mới</button>
+        </div>
+    </div>
+    <p class="hint">Sau khi tải app key bạn có thể chọn nhanh trong danh sách gợi ý.</p>
+</section>
 
-        // Luôn build URL dựa trên vị trí hiện tại (tự bao gồm /SendNoti nếu có)
-        const urlFrom = (path) => new URL(path, window.location).toString();
+<div class="grid grid-columns-2">
+    <section class="card">
+        <h2>Danh sách thông báo</h2>
+        <div id="notifList" class="notif-list"></div>
+    </section>
+    <section class="card">
+        <h2>Kiểm tra cập nhật ứng dụng</h2>
+        <form id="versionForm" class="grid" style="gap:0.75rem;">
+            <div>
+                <label for="currentVersion">Phiên bản hiện tại *</label>
+                <input id="currentVersion" type="text" placeholder="vd: 1.0.0" required />
+            </div>
+            <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                <button type="submit">Kiểm tra</button>
+                <button type="button" id="clearStatus" class="secondary">Xoá log</button>
+            </div>
+        </form>
+        <pre id="status" class="status">Chưa thực hiện kiểm tra.</pre>
+    </section>
+</div>
 
-        function add(n) {
-            if (n.message) n = n.message; // server đang bọc { status, message }
-            const li = document.createElement('li');
+<script>
+const state = {
+    baseUrl: '',
+    appKey: '',
+    notifications: [],
+    apps: []
+};
 
-            const title = n.title ?? n.Title ?? '';
-            const body = n.body ?? n.Body ?? '';
-            li.textContent = `${title}: ${body}`;
+const baseUrlInput = document.getElementById('baseUrl');
+const appKeyInput = document.getElementById('appKey');
+const appKeyList = document.getElementById('appKeyList');
+const btnLoadApps = document.getElementById('btnLoadApps');
+const btnLoad = document.getElementById('btnLoad');
+const btnRefresh = document.getElementById('btnRefresh');
+const notifList = document.getElementById('notifList');
+const versionForm = document.getElementById('versionForm');
+const statusEl = document.getElementById('status');
+const clearStatusBtn = document.getElementById('clearStatus');
 
-            const url = n.fileUrl ?? n.FileUrl;
-            if (url) {
-                const previewBtn = document.createElement('button');
-                previewBtn.textContent = 'Preview';
+function normalizeBaseUrl(value) {
+    return value ? value.replace(/\/$/, '') : '';
+}
 
-                const downloadLink = document.createElement('a');
-                downloadLink.href = urlFrom(url); // chuẩn hoá URL (kể cả trường hợp server trả bắt đầu bằng "/")
-                const lowerUrl = downloadLink.href.toLowerCase();
-                downloadLink.textContent = lowerUrl.endsWith('.apk') ? 'Install APK' : 'Download';
-                downloadLink.download = '';
-                downloadLink.target = '_blank';
-                downloadLink.style.marginLeft = '8px';
+function setStatus(text, data) {
+    const content = [text, data ? JSON.stringify(data, null, 2) : null]
+        .filter(Boolean)
+        .join('\n');
+    statusEl.textContent = content || 'Đang chờ thao tác.';
+}
 
-                li.appendChild(previewBtn);
-                li.appendChild(downloadLink);
+async function fetchJson(path) {
+    if (!state.baseUrl) throw new Error('Chưa thiết lập API base URL');
+    const res = await fetch(`${state.baseUrl}${path}`);
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
+    if (!res.ok) {
+        throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+    }
+    return data;
+}
 
-                const preview = document.createElement('div');
-                preview.className = 'preview-container';
-                preview.style.display = 'none';
-                li.appendChild(preview);
+function ensureSetup() {
+    state.baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
+    state.appKey = appKeyInput.value.trim().toLowerCase();
+    if (!state.baseUrl) {
+        alert('Nhập địa chỉ máy chủ API trước.');
+        return false;
+    }
+    if (!state.appKey) {
+        alert('Vui lòng nhập app key.');
+        return false;
+    }
+    return true;
+}
 
-                previewBtn.addEventListener('click', () => {
-                    if (preview.style.display === 'none') {
-                        preview.innerHTML = '';
-                        const lower = lowerUrl;
-                        if (lower.match(/\.(png|jpe?g|gif|bmp|webp)$/)) {
-                            const img = document.createElement('img');
-                            img.src = downloadLink.href;
-                            preview.appendChild(img);
-                        } else if (lower.match(/\.(mp4|webm|ogg)$/)) {
-                            const video = document.createElement('video');
-                            video.src = downloadLink.href;
-                            video.controls = true;
-                            preview.appendChild(video);
-                        } else if (lower.match(/\.(mp3|wav|ogg)$/)) {
-                            const audio = document.createElement('audio');
-                            audio.src = downloadLink.href;
-                            audio.controls = true;
-                            preview.appendChild(audio);
-                        } else {
-                            const frame = document.createElement('iframe');
-                            frame.src = downloadLink.href;
-                            frame.width = 560;
-                            frame.height = 340;
-                            preview.appendChild(frame);
-                        }
-                        preview.style.display = 'block';
-                    } else {
-                        preview.style.display = 'none';
-                    }
-                });
-            }
+btnLoadApps.addEventListener('click', async () => {
+    state.baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Nhập địa chỉ máy chủ API trước.');
+        return;
+    }
+    try {
+        btnLoadApps.disabled = true;
+        notifList.innerHTML = '<p>Đang tải app key...</p>';
+        const data = await fetchJson('/api/control/applications');
+        state.apps = Array.isArray(data) ? data : [];
+        appKeyList.innerHTML = '';
+        state.apps.forEach(app => {
+            const option = document.createElement('option');
+            option.value = app.appKey;
+            appKeyList.appendChild(option);
+        });
+        notifList.innerHTML = '<p>Đã tải danh sách app key. Chọn app và tải thông báo.</p>';
+    } catch (err) {
+        notifList.innerHTML = `<p style="color:#dc2626;">Lỗi tải app key: ${err.message}</p>`;
+    } finally {
+        btnLoadApps.disabled = false;
+    }
+});
 
-            list.prepend(li);
+btnLoad.addEventListener('click', async () => {
+    if (!ensureSetup()) return;
+    await loadNotifications();
+});
+
+btnRefresh.addEventListener('click', async () => {
+    if (!ensureSetup()) return;
+    await loadNotifications();
+});
+
+async function loadNotifications() {
+    try {
+        btnLoad.disabled = true;
+        btnRefresh.disabled = true;
+        notifList.innerHTML = '<p>Đang tải thông báo...</p>';
+        const data = await fetchJson(`/api/control/get-notifications?appKey=${encodeURIComponent(state.appKey)}&pageSize=50`);
+        state.notifications = data.items ?? [];
+        renderNotifications();
+    } catch (err) {
+        notifList.innerHTML = `<p style="color:#dc2626;">Lỗi tải thông báo: ${err.message}</p>`;
+    } finally {
+        btnLoad.disabled = false;
+        btnRefresh.disabled = false;
+    }
+}
+
+function renderNotifications() {
+    notifList.innerHTML = '';
+    if (state.notifications.length === 0) {
+        notifList.innerHTML = '<p>Chưa có thông báo nào.</p>';
+        return;
+    }
+    state.notifications.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'notif-item';
+        const created = new Date(item.createdAt).toLocaleString();
+        const linkHtml = item.link ? `<a href="${item.link}" target="_blank" rel="noopener">${item.link}</a>` : 'Không có';
+        div.innerHTML = `
+            <h3>${item.title}</h3>
+            <div class="notif-meta">${created} • ${item.appName ?? ''} (${item.appKey})</div>
+            <div class="notif-body">${item.message ?? ''}</div>
+            <div class="notif-meta">Liên kết: ${linkHtml}</div>
+        `;
+        if (item.fileUrl) {
+            const fileLink = document.createElement('div');
+            fileLink.className = 'notif-meta';
+            fileLink.innerHTML = `Tệp đính kèm: <a href="${item.fileUrl}" target="_blank" rel="noopener">${item.fileUrl}</a>`;
+            div.appendChild(fileLink);
         }
-
-        async function load() {
-            const res = await fetch(urlFrom('api/control/get-notifications'));
-            if (!res.ok) {
-                list.innerHTML = `<li>Load failed: ${res.status}</li>`;
-                return;
-            }
-            const json = await res.json();
-            list.innerHTML = '';
-            (json.items || []).forEach(add);
+        if (item.appVersion) {
+            const block = document.createElement('div');
+            block.className = 'update-block';
+            block.innerHTML = `
+                <strong>Bản cập nhật: ${item.appVersion.versionName}</strong> — ${item.appVersion.platform ?? 'N/A'}<br/>
+                ${item.appVersion.releaseNotes ?? 'Không có ghi chú.'}<br/>
+                <a href="${item.appVersion.fileUrl}" target="_blank" rel="noopener">Tải gói cài đặt</a>
+            `;
+            div.appendChild(block);
         }
+        notifList.appendChild(div);
+    });
+}
 
-        load();
+versionForm.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    if (!ensureSetup()) return;
+    const current = document.getElementById('currentVersion').value.trim();
+    if (!current) {
+        alert('Vui lòng nhập phiên bản hiện tại.');
+        return;
+    }
+    try {
+        setStatus('Đang kiểm tra cập nhật...');
+        const data = await fetchJson(`/api/control/check-app-version?appKey=${encodeURIComponent(state.appKey)}&currentVersion=${encodeURIComponent(current)}`);
+        setStatus('Kết quả kiểm tra:', data);
+    } catch (err) {
+        setStatus('Kiểm tra thất bại:', err.message);
+    }
+});
 
-        // SSE phải dùng URL đúng base
-        const evt = new EventSource(urlFrom('api/control/notifications-stream'));
-        evt.onmessage = e => add(JSON.parse(e.data));
-        evt.onerror = () => {
-            // optional: auto-reconnect (EventSource tự reconnect mặc định)
-        };
-    </script>
+clearStatusBtn.addEventListener('click', () => {
+    setStatus('Log đã được xoá.');
+});
+
+notifList.innerHTML = '<p>Nhập API base, app key và bấm "Tải thông báo" để bắt đầu.</p>';
+setStatus('Chưa thực hiện kiểm tra.');
+</script>
 </body>
 </html>

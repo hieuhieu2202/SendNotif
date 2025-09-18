@@ -1,92 +1,699 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <title>Send Notification</title>
+    <title>Bảng điều khiển gửi thông báo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        :root {
+            color-scheme: light dark;
+            font-family: "Inter", system-ui, sans-serif;
+        }
         body {
-            font-family: system-ui, Arial, sans-serif;
-            margin: 24px;
+            margin: 0;
+            padding: 1.5rem;
+            background: #f5f7fb;
+            color: #111827;
         }
-
-        form {
-            display: grid;
-            gap: 10px;
-            max-width: 520px;
+        header {
+            margin-bottom: 1.5rem;
         }
-
+        h1 {
+            margin: 0 0 0.5rem;
+            font-size: 2rem;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.2rem;
+            box-shadow: 0 12px 30px rgba(15, 32, 75, 0.1);
+            margin-bottom: 1.25rem;
+        }
         label {
-            display: grid;
-            gap: 4px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.35rem;
         }
-
-        input, textarea {
-            padding: 6px 8px;
+        input[type="text"],
+        input[type="url"],
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.95rem;
+            box-sizing: border-box;
         }
-
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
         button {
-            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            padding: 0.65rem 1.2rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
         }
-
-        pre {
-            background: #111;
-            color: #eee;
-            padding: 12px;
-            overflow: auto;
+        button.secondary {
+            background: transparent;
+            color: #1d4ed8;
+            border: 1px solid #c7d2fe;
+        }
+        button.danger {
+            background: #ef4444;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        .grid-columns-2 {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .targets {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .target-row {
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            align-items: end;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 0.75rem;
+            background: #f9fafb;
+        }
+        .target-row button {
+            justify-self: flex-start;
+        }
+        .status {
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            background: #0f172a;
+            color: #e0f2fe;
+            padding: 1rem;
+            border-radius: 8px;
+            min-height: 150px;
+        }
+        .hint {
+            font-size: 0.88rem;
+            color: #4b5563;
+        }
+        .app-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 0.6rem;
+        }
+        .app-list li {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            background: #fefefe;
+        }
+        ul.version-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.6rem;
+        }
+        ul.version-list li {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            background: #f9fafb;
         }
     </style>
 </head>
 <body>
-    <h1>Send Notification</h1>
-    <form id="notifyForm" enctype="multipart/form-data">
-        <label>
-            ID (optional)
-            <input id="id" name="id" />
-        </label>
-        <label>
-            Title
-            <input id="title" name="title" required />
-        </label>
-        <label>
-            Body
-            <textarea id="body" name="body" required></textarea>
-        </label>
-        <label>
-            File
-            <input id="file" name="file" type="file" />
-        </label>
-        <button type="submit">Send</button>
+<header>
+    <h1>Gửi thông báo đa ứng dụng</h1>
+    <p class="hint">Nhập địa chỉ API, tạo app key nếu cần rồi thêm các ứng dụng nhận thông báo. Bạn có thể gắn bản phát hành khác nhau cho từng app.</p>
+</header>
+
+<section class="card">
+    <div class="grid" style="gap:0.85rem;">
+        <div>
+            <label for="apiBase">Máy chủ API</label>
+            <input id="apiBase" type="url" placeholder="https://example.com" />
+            <p class="hint">Tất cả request sẽ gửi tới địa chỉ này (ví dụ <code>https://your-host/api/control/...</code>).</p>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:flex-end;">
+            <button id="btnLoadApps">Tải danh sách ứng dụng</button>
+            <button id="btnResetTargets" class="secondary">Xoá toàn bộ mục nhận</button>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Tạo ứng dụng mới</h2>
+    <form id="appForm" class="grid" style="gap:0.75rem;">
+        <div class="grid" style="gap:0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <label for="appKey">App Key *</label>
+                <input id="appKey" type="text" required maxlength="100" placeholder="vd: gotyfi" />
+            </div>
+            <div>
+                <label for="displayName">Tên hiển thị *</label>
+                <input id="displayName" type="text" required maxlength="150" placeholder="GoTyfi" />
+            </div>
+        </div>
+        <div>
+            <label for="appDescription">Mô tả</label>
+            <input id="appDescription" type="text" maxlength="500" placeholder="Ghi chú nội bộ (tuỳ chọn)" />
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+            <button type="submit">Tạo ứng dụng</button>
+            <button type="button" id="btnClearAppForm" class="secondary">Làm mới</button>
+        </div>
+        <p class="hint">App key được lưu dạng chữ thường và phải duy nhất. Sau khi tạo thành công hãy tải lại danh sách ứng dụng.</p>
     </form>
+</section>
 
-    <h3>Result</h3>
-    <pre id="result"></pre>
+<div class="grid grid-columns-2">
+    <section class="card">
+        <h2>Ứng dụng nhận thông báo</h2>
+        <div class="targets" id="targetList"></div>
+        <button id="btnAddTarget" type="button" style="margin-top:0.75rem;">+ Thêm ứng dụng nhận</button>
+        <p class="hint">Mỗi dòng là một mục tiêu gửi. Bạn có thể chọn App Version tương ứng hoặc để trống nếu là thông báo thường.</p>
+    </section>
 
-    <script>
-        const urlFrom = (path) => new URL(path, window.location).toString();
+    <section class="card">
+        <h2>Danh sách ứng dụng</h2>
+        <ul id="appList" class="app-list"></ul>
+    </section>
+</div>
 
-        const form = document.getElementById('notifyForm');
-        const result = document.getElementById('result');
+<div class="grid grid-columns-2">
+    <section class="card">
+        <h2>Nội dung thông báo</h2>
+        <form id="sendForm" class="grid" style="gap:0.85rem;">
+            <div>
+                <label for="title">Tiêu đề *</label>
+                <input id="title" type="text" required maxlength="100" placeholder="Ví dụ: 🚀 Cập nhật 1.2.0" />
+            </div>
+            <div>
+                <label for="body">Nội dung *</label>
+                <textarea id="body" required maxlength="4000" placeholder="Mô tả chi tiết"></textarea>
+            </div>
+            <div>
+                <label for="link">Liên kết</label>
+                <input id="link" type="url" placeholder="https://... (tuỳ chọn)" />
+            </div>
+            <div>
+                <label for="fileInput">Đính kèm tệp (tuỳ chọn)</label>
+                <input id="fileInput" type="file" />
+                <p id="fileInfo" class="hint"></p>
+            </div>
+            <div style="display:flex; gap:0.75rem; align-items:center;">
+                <button type="submit" id="sendBtn">Gửi thông báo</button>
+                <button type="button" class="secondary" id="resetBtn">Xoá nội dung</button>
+            </div>
+        </form>
+    </section>
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            result.textContent = 'Sending...';
+    <section class="card">
+        <div class="grid" style="gap:0.75rem;">
+            <div>
+                <label for="versionAppSelect">Xem bản phát hành của ứng dụng</label>
+                <select id="versionAppSelect">
+                    <option value="">-- Chọn ứng dụng --</option>
+                </select>
+            </div>
+            <ul id="versionList" class="version-list"></ul>
+        </div>
+    </section>
+</div>
 
-            try {
-                const data = new FormData(form);
-                const res = await fetch(urlFrom('api/control/send-notification'), {
-                    method: 'POST',
-                    body: data
-                });
+<section class="card">
+    <h2>Tạo bản phát hành mới</h2>
+    <form id="versionForm" class="grid" style="gap:0.75rem;">
+        <div class="grid" style="gap:0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <label for="versionAppKey">Ứng dụng *</label>
+                <select id="versionAppKey" required>
+                    <option value="">-- Chọn ứng dụng --</option>
+                </select>
+            </div>
+            <div>
+                <label for="versionName">Tên phiên bản *</label>
+                <input id="versionName" type="text" required maxlength="50" placeholder="vd: 1.3.0" />
+            </div>
+        </div>
+        <div class="grid" style="gap:0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <label for="versionPlatform">Nền tảng</label>
+                <input id="versionPlatform" type="text" maxlength="30" placeholder="android / ios / desktop" />
+            </div>
+            <div>
+                <label for="versionReleaseDate">Ngày phát hành *</label>
+                <input id="versionReleaseDate" type="datetime-local" required />
+            </div>
+        </div>
+        <div>
+            <label for="versionFileUrl">Đường dẫn tải *</label>
+            <input id="versionFileUrl" type="url" required maxlength="255" placeholder="https://cdn.example.com/app/v1.3.0.apk" />
+        </div>
+        <div>
+            <label for="versionChecksum">Checksum (SHA-256)</label>
+            <input id="versionChecksum" type="text" maxlength="128" placeholder="Tuỳ chọn" />
+        </div>
+        <div>
+            <label for="versionNotes">Ghi chú phát hành</label>
+            <textarea id="versionNotes" maxlength="4000" placeholder="Thay đổi, tính năng, hướng dẫn..."></textarea>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+            <button type="submit">Lưu bản phát hành</button>
+            <button type="button" id="versionFormReset" class="secondary">Làm mới</button>
+        </div>
+        <p class="hint">Sau khi lưu, phiên bản mới sẽ xuất hiện trong danh sách và dropdown gắn bản cập nhật của khu vực gửi thông báo.</p>
+    </form>
+</section>
 
-                let bodyText = await res.text();
-                try { bodyText = JSON.stringify(JSON.parse(bodyText), null, 2); } catch { }
-                result.textContent = `${res.status} ${res.statusText}\n\n${bodyText}`;
+<section class="card">
+    <h2>Kết quả / Log</h2>
+    <pre id="status" class="status">Chưa thực hiện thao tác nào.</pre>
+</section>
 
-                if (res.ok) form.reset();
-            } catch (err) {
-                result.textContent = 'Error: ' + (err?.message || err);
+<script>
+const state = {
+    baseUrl: '',
+    apps: [],
+    versions: new Map(),
+    file: null
+};
+
+const apiBaseInput = document.getElementById('apiBase');
+const btnLoadApps = document.getElementById('btnLoadApps');
+const btnResetTargets = document.getElementById('btnResetTargets');
+const appList = document.getElementById('appList');
+const versionAppSelect = document.getElementById('versionAppSelect');
+const versionList = document.getElementById('versionList');
+const targetList = document.getElementById('targetList');
+const btnAddTarget = document.getElementById('btnAddTarget');
+const appForm = document.getElementById('appForm');
+const btnClearAppForm = document.getElementById('btnClearAppForm');
+const versionForm = document.getElementById('versionForm');
+const versionFormReset = document.getElementById('versionFormReset');
+const versionAppKeySelect = document.getElementById('versionAppKey');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const sendForm = document.getElementById('sendForm');
+const resetBtn = document.getElementById('resetBtn');
+const statusEl = document.getElementById('status');
+
+function normalizeBaseUrl(value) {
+    return value ? value.replace(/\/$/, '') : '';
+}
+
+function updateStatus(message, data) {
+    const text = [message, data ? JSON.stringify(data, null, 2) : null]
+        .filter(Boolean)
+        .join('\n');
+    statusEl.textContent = text || 'Chưa thực hiện thao tác nào.';
+}
+
+async function fetchJson(path, options) {
+    if (!state.baseUrl) throw new Error('Chưa thiết lập máy chủ API.');
+    const response = await fetch(`${state.baseUrl}${path}`, options);
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!response.ok) {
+        throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+    }
+    return data;
+}
+
+function renderApps() {
+    state.versions.clear();
+    appList.innerHTML = '';
+    versionAppSelect.innerHTML = '<option value="">-- Chọn ứng dụng --</option>';
+    versionAppKeySelect.innerHTML = '<option value="">-- Chọn ứng dụng --</option>';
+
+    if (state.apps.length === 0) {
+        appList.innerHTML = '<li>Chưa có ứng dụng. Hãy tạo app mới hoặc tải lại danh sách.</li>';
+        return;
+    }
+
+    state.apps.forEach(app => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <strong>${app.displayName}</strong> <code>${app.appKey}</code><br/>
+            <small>Tạo ngày: ${new Date(app.createdAt).toLocaleString()} — ${app.versionCount} bản phát hành, ${app.notificationCount} thông báo</small>
+            ${app.description ? `<div class="hint">${app.description}</div>` : ''}
+        `;
+        appList.appendChild(li);
+
+        const option = document.createElement('option');
+        option.value = app.appKey;
+        option.textContent = `${app.displayName} (${app.appKey})`;
+        versionAppSelect.appendChild(option);
+
+        const formOption = option.cloneNode(true);
+        versionAppKeySelect.appendChild(formOption);
+    });
+
+    syncTargetAppOptions();
+}
+
+function syncTargetAppOptions() {
+    const appOptions = state.apps
+        .map(app => `<option value="${app.appKey}">${app.displayName} (${app.appKey})</option>`)
+        .join('');
+
+    targetList.querySelectorAll('select[data-role="app"]').forEach(select => {
+        const current = select.value;
+        select.innerHTML = '<option value="">-- Chọn ứng dụng --</option>' + appOptions;
+        if (current) {
+            select.value = current;
+        }
+    });
+}
+
+function addTargetRow(defaultKey = '') {
+    const row = document.createElement('div');
+    row.className = 'target-row';
+    row.innerHTML = `
+        <div>
+            <label>Ứng dụng *</label>
+            <select data-role="app">
+                <option value="">-- Chọn ứng dụng --</option>
+            </select>
+        </div>
+        <div>
+            <label>Bản phát hành</label>
+            <select data-role="version">
+                <option value="">-- Không gắn bản cập nhật --</option>
+            </select>
+        </div>
+        <button type="button" class="secondary" data-role="remove">Xoá</button>
+    `;
+
+    targetList.appendChild(row);
+    syncTargetAppOptions();
+    const appSelect = row.querySelector('select[data-role="app"]');
+    const versionSelect = row.querySelector('select[data-role="version"]');
+
+    appSelect.addEventListener('change', async () => {
+        const key = appSelect.value;
+        await populateVersionSelect(versionSelect, key);
+    });
+
+    row.querySelector('button[data-role="remove"]').addEventListener('click', () => {
+        row.remove();
+    });
+
+    if (defaultKey) {
+        appSelect.value = defaultKey;
+        appSelect.dispatchEvent(new Event('change'));
+    }
+}
+
+async function populateVersionSelect(select, appKey) {
+    select.innerHTML = '<option value="">-- Không gắn bản cập nhật --</option>';
+    if (!appKey) return;
+
+    const versions = await ensureVersions(appKey);
+    versions.forEach(ver => {
+        const option = document.createElement('option');
+        const date = new Date(ver.releaseDate).toLocaleString();
+        option.value = ver.appVersionId;
+        option.textContent = `${ver.versionName} — ${date}`;
+        select.appendChild(option);
+    });
+}
+
+async function ensureVersions(appKey) {
+    if (!appKey) return [];
+    if (!state.versions.has(appKey)) {
+        const data = await fetchJson(`/api/control/app-versions?appKey=${encodeURIComponent(appKey)}`);
+        state.versions.set(appKey, Array.isArray(data) ? data : []);
+    }
+    return state.versions.get(appKey) ?? [];
+}
+
+async function refreshVersionPanel(appKey) {
+    versionList.innerHTML = '';
+    if (!appKey) {
+        versionList.innerHTML = '<li>Chọn ứng dụng để xem các bản phát hành.</li>';
+        return;
+    }
+
+    try {
+        const versions = await ensureVersions(appKey);
+        if (versions.length === 0) {
+            versionList.innerHTML = '<li>Ứng dụng chưa có bản phát hành nào.</li>';
+            return;
+        }
+        versions.forEach(ver => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <strong>${ver.versionName}</strong> — ${ver.platform ?? 'N/A'}<br/>
+                <small>${new Date(ver.releaseDate).toLocaleString()}</small><br/>
+                ${ver.releaseNotes ? ver.releaseNotes : 'Không có ghi chú.'}<br/>
+                <a href="${ver.fileUrl}" target="_blank" rel="noopener">${ver.fileUrl}</a>
+            `;
+            versionList.appendChild(li);
+        });
+    } catch (err) {
+        versionList.innerHTML = `<li style="color:#dc2626;">Không tải được bản phát hành: ${err.message}</li>`;
+    }
+}
+
+btnLoadApps.addEventListener('click', async () => {
+    state.baseUrl = normalizeBaseUrl(apiBaseInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Vui lòng nhập địa chỉ máy chủ API.');
+        return;
+    }
+    try {
+        btnLoadApps.disabled = true;
+        updateStatus('Đang tải danh sách ứng dụng...');
+        const data = await fetchJson('/api/control/applications');
+        state.apps = Array.isArray(data) ? data : [];
+        renderApps();
+        updateStatus('Đã tải danh sách ứng dụng.', state.apps);
+    } catch (err) {
+        updateStatus('Lỗi tải ứng dụng:', err.message);
+    } finally {
+        btnLoadApps.disabled = false;
+    }
+});
+
+versionAppSelect.addEventListener('change', () => {
+    refreshVersionPanel(versionAppSelect.value);
+});
+
+btnAddTarget.addEventListener('click', () => {
+    if (state.apps.length === 0) {
+        alert('Hãy tải hoặc tạo ứng dụng trước.');
+        return;
+    }
+    addTargetRow();
+});
+
+btnResetTargets.addEventListener('click', () => {
+    targetList.innerHTML = '';
+    state.versions.clear();
+    versionList.innerHTML = '<li>Chọn ứng dụng để xem bản phát hành.</li>';
+});
+
+appForm.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    state.baseUrl = normalizeBaseUrl(apiBaseInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Chưa cấu hình máy chủ API.');
+        return;
+    }
+
+    const payload = {
+        appKey: document.getElementById('appKey').value.trim(),
+        displayName: document.getElementById('displayName').value.trim(),
+        description: document.getElementById('appDescription').value.trim() || null
+    };
+
+    try {
+        updateStatus('Đang tạo ứng dụng...', payload);
+        await fetchJson('/api/control/applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        updateStatus('Tạo ứng dụng thành công. Hãy tải lại danh sách để sử dụng.');
+        appForm.reset();
+    } catch (err) {
+        updateStatus('Tạo ứng dụng thất bại:', err.message);
+    }
+});
+
+btnClearAppForm.addEventListener('click', () => {
+    appForm.reset();
+});
+
+versionForm.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    state.baseUrl = normalizeBaseUrl(apiBaseInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Chưa cấu hình máy chủ API.');
+        return;
+    }
+
+    const appKey = versionAppKeySelect.value;
+    if (!appKey) {
+        alert('Hãy chọn ứng dụng để gắn bản phát hành.');
+        return;
+    }
+
+    const releaseDateRaw = document.getElementById('versionReleaseDate').value;
+    if (!releaseDateRaw) {
+        alert('Vui lòng chọn ngày phát hành.');
+        return;
+    }
+
+    const releaseDate = new Date(releaseDateRaw);
+    if (Number.isNaN(releaseDate.getTime())) {
+        alert('Ngày phát hành không hợp lệ.');
+        return;
+    }
+
+    const payload = {
+        appKey,
+        versionName: document.getElementById('versionName').value.trim(),
+        platform: document.getElementById('versionPlatform').value.trim() || null,
+        fileUrl: document.getElementById('versionFileUrl').value.trim(),
+        fileChecksum: document.getElementById('versionChecksum').value.trim() || null,
+        releaseNotes: document.getElementById('versionNotes').value.trim() || null,
+        releaseDate: releaseDate.toISOString()
+    };
+
+    try {
+        updateStatus('Đang lưu bản phát hành...', payload);
+        const data = await fetchJson('/api/control/app-versions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        updateStatus('Đã tạo bản phát hành.', data);
+        versionForm.reset();
+        const releaseInput = document.getElementById('versionReleaseDate');
+        if (releaseInput) {
+            releaseInput.value = '';
+        }
+        state.versions.delete(appKey);
+        if (versionAppSelect.value === appKey) {
+            refreshVersionPanel(appKey);
+        }
+        targetList.querySelectorAll('.target-row').forEach(row => {
+            const select = row.querySelector('select[data-role="app"]');
+            const versionSelect = row.querySelector('select[data-role="version"]');
+            if (select.value === appKey) {
+                populateVersionSelect(versionSelect, appKey);
             }
         });
-    </script>
+    } catch (err) {
+        updateStatus('Tạo bản phát hành thất bại:', err.message);
+    }
+});
+
+versionFormReset.addEventListener('click', () => {
+    versionForm.reset();
+    const releaseInput = document.getElementById('versionReleaseDate');
+    if (releaseInput) {
+        releaseInput.value = '';
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+        state.file = null;
+        fileInfo.textContent = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        state.file = { base64, name: file.name, size: file.size };
+        fileInfo.textContent = `Đã chọn ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    };
+    reader.onerror = () => {
+        state.file = null;
+        fileInfo.textContent = 'Không thể đọc tệp vừa chọn.';
+    };
+    reader.readAsDataURL(file);
+});
+
+sendForm.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    if (!state.baseUrl) {
+        alert('Chưa cấu hình máy chủ API.');
+        return;
+    }
+
+    const targets = Array.from(targetList.querySelectorAll('.target-row')).map(row => {
+        const appKey = row.querySelector('select[data-role="app"]').value;
+        const versionValue = row.querySelector('select[data-role="version"]').value;
+        return {
+            appKey,
+            appVersionId: versionValue ? Number(versionValue) : null
+        };
+    }).filter(t => t.appKey);
+
+    if (targets.length === 0) {
+        alert('Cần thêm ít nhất một ứng dụng nhận thông báo.');
+        return;
+    }
+
+    const payload = {
+        title: document.getElementById('title').value.trim(),
+        body: document.getElementById('body').value.trim(),
+        link: document.getElementById('link').value.trim() || null,
+        targets,
+        fileBase64: state.file ? state.file.base64 : null,
+        fileName: state.file ? state.file.name : null
+    };
+
+    try {
+        updateStatus('Đang gửi thông báo...', payload);
+        const data = await fetchJson('/api/control/send-notification-json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        updateStatus('Gửi thành công:', data);
+        sendForm.reset();
+        fileInfo.textContent = '';
+        state.file = null;
+    } catch (err) {
+        updateStatus('Gửi thất bại:', err.message);
+    }
+});
+
+resetBtn.addEventListener('click', () => {
+    sendForm.reset();
+    state.file = null;
+    fileInfo.textContent = '';
+    updateStatus('Đã xoá nội dung thông báo.');
+});
+
+// Khởi tạo mặc định
+versionList.innerHTML = '<li>Chọn ứng dụng để xem bản phát hành.</li>';
+updateStatus('Chưa thực hiện thao tác nào.');
+</script>
 </body>
 </html>
