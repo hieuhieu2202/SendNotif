@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using System.IO;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using RemoteControlApi.Data;
 using RemoteControlApi.Entities;
+using RemoteControlApi.Services;
 using static RemoteControlApi.Model.NotiModel;
 
 namespace RemoteControlApi.Controllers;
@@ -14,103 +15,89 @@ namespace RemoteControlApi.Controllers;
 [Route("api/[controller]")]
 public class ControlController : ControllerBase
 {
+    private static readonly JsonSerializerOptions SseJsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly AppDbContext _dbContext;
     private readonly IWebHostEnvironment _environment;
+    private readonly INotificationStream _notificationStream;
 
-    public ControlController(AppDbContext dbContext, IWebHostEnvironment environment)
+    public ControlController(AppDbContext dbContext, IWebHostEnvironment environment, INotificationStream notificationStream)
     {
         _dbContext = dbContext;
         _environment = environment;
+        _notificationStream = notificationStream;
     }
 
-    #region Notifications
+    #region Applications
 
-    [HttpPost("send-notification-json")]
-    [Consumes("application/json")]
-    public Task<IActionResult> SendNotificationJson([FromBody] NotificationMessage message)
+    [HttpGet("applications")]
+    public async Task<IActionResult> GetApplications()
     {
-        return PersistNotificationAsync(message);
-    }
-
-    [HttpPost("send-notification")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> SendNotificationForm([FromForm] SendNotificationForm form)
-    {
-        var message = new NotificationMessage
-        {
-            Title = form.Title,
-            Body = form.Body,
-            Link = form.Link,
-            AppVersionId = form.AppVersionId,
-            FileName = form.File?.FileName
-        };
-
-        if (form.File is { Length: > 0 })
-        {
-            using var ms = new MemoryStream();
-            await form.File.CopyToAsync(ms);
-            message.FileBase64 = Convert.ToBase64String(ms.ToArray());
-        }
-
-        return await PersistNotificationAsync(message);
-    }
-
-    [HttpGet("get-notifications")]
-    public async Task<IActionResult> GetNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
-    {
-        page = Math.Max(page, 1);
-        pageSize = Math.Clamp(pageSize, 1, 200);
-
-        var query = _dbContext.Notifications
+        var applications = await _dbContext.Applications
             .AsNoTracking()
-            .Where(n => n.IsActive)
-            .OrderByDescending(n => n.CreatedAt)
-            .ThenByDescending(n => n.NotificationId)
-            .Include(n => n.AppVersion);
-
-        var total = await query.CountAsync();
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(n => new
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new
             {
-                n.NotificationId,
-                n.Title,
-                message = n.Message,
-                n.CreatedAt,
-                n.Link,
-                n.FileUrl,
-                n.IsActive,
-                appVersion = n.AppVersion == null
-                    ? null
-                    : new
-                    {
-                        n.AppVersion.AppVersionId,
-                        n.AppVersion.VersionName,
-                        n.AppVersion.ReleaseNotes,
-                        n.AppVersion.FileUrl,
-                        n.AppVersion.FileChecksum,
-                        n.AppVersion.ReleaseDate
-                    }
+                a.ApplicationId,
+                a.AppKey,
+                a.DisplayName,
+                a.Description,
+                a.IsActive,
+                a.CreatedAt,
+                versionCount = a.AppVersions.Count(),
+                notificationCount = a.Notifications.Count()
             })
             .ToListAsync();
 
         SetNoCache();
-        return Ok(new
-        {
-            total,
-            page,
-            pageSize,
-            items
-        });
+        return Ok(applications);
     }
 
-    [HttpPost("clear-notifications")]
-    public async Task<IActionResult> ClearNotifications()
+    [HttpPost("applications")]
+    public async Task<IActionResult> CreateApplication([FromBody] CreateApplicationRequest request)
     {
-        await _dbContext.Notifications.ExecuteDeleteAsync();
+        request.AppKey = NormalizeAppKey(request.AppKey) ?? string.Empty;
+        request.DisplayName = request.DisplayName?.Trim() ?? string.Empty;
+        request.Description = string.IsNullOrWhiteSpace(request.Description)
+            ? null
+            : request.Description.Trim();
+
+        ModelState.Clear();
+        if (!TryValidateModel(request))
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var exists = await _dbContext.Applications
+            .AnyAsync(a => a.AppKey == request.AppKey);
+        if (exists)
+        {
+            ModelState.AddModelError(nameof(request.AppKey), "AppKey đã tồn tại.");
+            return ValidationProblem(ModelState);
+        }
+
+        var application = new Application
+        {
+            AppKey = request.AppKey,
+            DisplayName = request.DisplayName,
+            Description = request.Description,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+
+        _dbContext.Applications.Add(application);
+        await _dbContext.SaveChangesAsync();
+
         SetNoCache();
-        return Ok(new { status = "Cleared" });
+        return Ok(new
+        {
+            application.ApplicationId,
+            application.AppKey,
+            application.DisplayName,
+            application.Description,
+            application.IsActive,
+            application.CreatedAt
+        });
     }
 
     #endregion
@@ -118,20 +105,32 @@ public class ControlController : ControllerBase
     #region App Versions
 
     [HttpGet("app-versions")]
-    public async Task<IActionResult> ListAppVersions()
+    public async Task<IActionResult> ListAppVersions([FromQuery] string? appKey = null)
     {
-        var versions = await _dbContext.AppVersions
+        var normalizedKey = NormalizeAppKey(appKey);
+
+        var query = _dbContext.AppVersions
             .AsNoTracking()
             .OrderByDescending(v => v.ReleaseDate)
-            .ThenByDescending(v => v.AppVersionId)
+            .ThenByDescending(v => v.AppVersionId);
+
+        if (!string.IsNullOrEmpty(normalizedKey))
+        {
+            query = query.Where(v => v.Application.AppKey == normalizedKey);
+        }
+
+        var versions = await query
             .Select(v => new
             {
                 v.AppVersionId,
                 v.VersionName,
+                v.Platform,
                 v.ReleaseNotes,
                 v.FileUrl,
                 v.FileChecksum,
-                v.ReleaseDate
+                v.ReleaseDate,
+                appKey = v.Application.AppKey,
+                appName = v.Application.DisplayName
             })
             .ToListAsync();
 
@@ -149,10 +148,13 @@ public class ControlController : ControllerBase
             {
                 v.AppVersionId,
                 v.VersionName,
+                v.Platform,
                 v.ReleaseNotes,
                 v.FileUrl,
                 v.FileChecksum,
-                v.ReleaseDate
+                v.ReleaseDate,
+                appKey = v.Application.AppKey,
+                appName = v.Application.DisplayName
             })
             .FirstOrDefaultAsync();
 
@@ -168,11 +170,15 @@ public class ControlController : ControllerBase
     [HttpPost("app-versions")]
     public async Task<IActionResult> CreateAppVersion([FromBody] CreateAppVersionRequest request)
     {
+        request.AppKey = NormalizeAppKey(request.AppKey) ?? string.Empty;
         request.VersionName = request.VersionName?.Trim() ?? string.Empty;
-        request.FileUrl = request.FileUrl?.Trim() ?? string.Empty;
+        request.Platform = string.IsNullOrWhiteSpace(request.Platform)
+            ? null
+            : request.Platform.Trim();
         request.ReleaseNotes = string.IsNullOrWhiteSpace(request.ReleaseNotes)
             ? null
             : request.ReleaseNotes.Trim();
+        request.FileUrl = request.FileUrl?.Trim() ?? string.Empty;
         request.FileChecksum = string.IsNullOrWhiteSpace(request.FileChecksum)
             ? null
             : request.FileChecksum.Trim();
@@ -183,26 +189,29 @@ public class ControlController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var releaseDate = request.ReleaseDate;
-        if (releaseDate.Kind == DateTimeKind.Local)
+        var application = await _dbContext.Applications
+            .FirstOrDefaultAsync(a => a.AppKey == request.AppKey);
+        if (application is null)
         {
-            releaseDate = releaseDate.ToUniversalTime();
-        }
-        else if (releaseDate.Kind == DateTimeKind.Unspecified)
-        {
-            releaseDate = DateTime.SpecifyKind(releaseDate, DateTimeKind.Utc);
+            ModelState.AddModelError(nameof(request.AppKey), "AppKey không tồn tại.");
+            return ValidationProblem(ModelState);
         }
 
-        var duplicate = await _dbContext.AppVersions.AnyAsync(v => v.VersionName == request.VersionName);
+        var releaseDate = NormalizeToUtc(request.ReleaseDate);
+
+        var duplicate = await _dbContext.AppVersions
+            .AnyAsync(v => v.ApplicationId == application.ApplicationId && v.VersionName == request.VersionName);
         if (duplicate)
         {
-            ModelState.AddModelError(nameof(request.VersionName), "Phiên bản đã tồn tại.");
+            ModelState.AddModelError(nameof(request.VersionName), "Phiên bản đã tồn tại cho ứng dụng này.");
             return ValidationProblem(ModelState);
         }
 
         var version = new AppVersion
         {
+            ApplicationId = application.ApplicationId,
             VersionName = request.VersionName,
+            Platform = request.Platform,
             ReleaseNotes = request.ReleaseNotes,
             FileUrl = request.FileUrl,
             FileChecksum = request.FileChecksum,
@@ -217,20 +226,40 @@ public class ControlController : ControllerBase
         {
             version.AppVersionId,
             version.VersionName,
+            version.Platform,
             version.ReleaseNotes,
             version.FileUrl,
             version.FileChecksum,
-            version.ReleaseDate
+            version.ReleaseDate,
+            appKey = application.AppKey,
+            appName = application.DisplayName
         });
     }
 
     [HttpGet("check-app-version")]
-    public async Task<IActionResult> CheckAppVersion([FromQuery] string currentVersion)
+    public async Task<IActionResult> CheckAppVersion([FromQuery] string appKey, [FromQuery] string currentVersion)
     {
+        var normalizedKey = NormalizeAppKey(appKey);
+        if (string.IsNullOrEmpty(normalizedKey))
+        {
+            ModelState.AddModelError(nameof(appKey), "appKey là bắt buộc.");
+            return ValidationProblem(ModelState);
+        }
+
         currentVersion = currentVersion?.Trim() ?? string.Empty;
+
+        var application = await _dbContext.Applications
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.AppKey == normalizedKey);
+
+        if (application is null)
+        {
+            return NotFound(new { message = "Ứng dụng không tồn tại." });
+        }
 
         var latest = await _dbContext.AppVersions
             .AsNoTracking()
+            .Where(v => v.ApplicationId == application.ApplicationId)
             .OrderByDescending(v => v.ReleaseDate)
             .ThenByDescending(v => v.AppVersionId)
             .FirstOrDefaultAsync();
@@ -239,6 +268,7 @@ public class ControlController : ControllerBase
         {
             return Ok(new
             {
+                appKey = application.AppKey,
                 currentVersion,
                 updateAvailable = false,
                 message = "Chưa có bản phát hành nào.",
@@ -267,6 +297,7 @@ public class ControlController : ControllerBase
 
         return Ok(new
         {
+            appKey = application.AppKey,
             currentVersion,
             serverVersion = latest.VersionName,
             updateAvailable,
@@ -275,12 +306,177 @@ public class ControlController : ControllerBase
             {
                 latest.AppVersionId,
                 latest.VersionName,
+                latest.Platform,
                 latest.ReleaseNotes,
                 latest.FileUrl,
                 latest.FileChecksum,
                 latest.ReleaseDate
             }
         });
+    }
+
+    #endregion
+
+    #region Notifications
+
+    [HttpPost("send-notification-json")]
+    [Consumes("application/json")]
+    public Task<IActionResult> SendNotificationJson([FromBody] NotificationMessage message)
+    {
+        return PersistNotificationAsync(message);
+    }
+
+    [HttpPost("send-notification")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SendNotificationForm([FromForm] SendNotificationForm form)
+    {
+        var targets = NormalizeAppKeyList(form.Id);
+        if (targets.Count == 0)
+        {
+            ModelState.AddModelError(nameof(form.Id), "Cần ít nhất một appKey trong trường id.");
+            return ValidationProblem(ModelState);
+        }
+
+        var message = new NotificationMessage
+        {
+            Title = form.Title,
+            Body = form.Body,
+            Link = form.Link,
+            Targets = targets.Select(key => new NotificationTarget
+            {
+                AppKey = key,
+                AppVersionId = form.AppVersionId
+            }).ToList(),
+            FileName = form.File?.FileName
+        };
+
+        if (form.File is { Length: > 0 })
+        {
+            using var ms = new MemoryStream();
+            await form.File.CopyToAsync(ms);
+            message.FileBase64 = Convert.ToBase64String(ms.ToArray());
+        }
+
+        return await PersistNotificationAsync(message);
+    }
+
+    [HttpGet("get-notifications")]
+    public async Task<IActionResult> GetNotifications([FromQuery] string appKey, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    {
+        var normalizedKey = NormalizeAppKey(appKey);
+        if (string.IsNullOrEmpty(normalizedKey))
+        {
+            ModelState.AddModelError(nameof(appKey), "appKey là bắt buộc.");
+            return ValidationProblem(ModelState);
+        }
+
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 200);
+
+        var application = await _dbContext.Applications
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.AppKey == normalizedKey);
+
+        if (application is null)
+        {
+            return NotFound(new { message = "Ứng dụng không tồn tại." });
+        }
+
+        var query = _dbContext.Notifications
+            .AsNoTracking()
+            .Where(n => n.ApplicationId == application.ApplicationId && n.IsActive)
+            .OrderByDescending(n => n.CreatedAt)
+            .ThenByDescending(n => n.NotificationId)
+            .Include(n => n.AppVersion);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(n => new
+            {
+                n.NotificationId,
+                n.Title,
+                message = n.Message,
+                n.CreatedAt,
+                n.Link,
+                n.FileUrl,
+                appKey = application.AppKey,
+                appName = application.DisplayName,
+                appVersion = n.AppVersion == null
+                    ? null
+                    : new
+                    {
+                        n.AppVersion.AppVersionId,
+                        n.AppVersion.VersionName,
+                        n.AppVersion.Platform,
+                        n.AppVersion.ReleaseNotes,
+                        n.AppVersion.FileUrl,
+                        n.AppVersion.FileChecksum,
+                        n.AppVersion.ReleaseDate
+                    }
+            })
+            .ToListAsync();
+
+        SetNoCache();
+        return Ok(new
+        {
+            total,
+            page,
+            pageSize,
+            items
+        });
+    }
+
+    [HttpPost("clear-notifications")]
+    public async Task<IActionResult> ClearNotifications([FromQuery] string? appKey = null)
+    {
+        var normalizedKey = NormalizeAppKey(appKey);
+        if (string.IsNullOrEmpty(normalizedKey))
+        {
+            await _dbContext.Notifications.ExecuteDeleteAsync();
+            SetNoCache();
+            return Ok(new { status = "Cleared" });
+        }
+
+        var application = await _dbContext.Applications
+            .FirstOrDefaultAsync(a => a.AppKey == normalizedKey);
+
+        if (application is null)
+        {
+            return NotFound(new { message = "Ứng dụng không tồn tại." });
+        }
+
+        await _dbContext.Notifications
+            .Where(n => n.ApplicationId == application.ApplicationId)
+            .ExecuteDeleteAsync();
+
+        SetNoCache();
+        return Ok(new { status = "Cleared", appKey = application.AppKey });
+    }
+
+    [HttpGet("notifications-stream")]
+    public async Task NotificationsStream([FromQuery] string? appKey, CancellationToken cancellationToken)
+    {
+        Response.Headers[HeaderNames.CacheControl] = "no-cache";
+        Response.Headers[HeaderNames.ContentType] = "text/event-stream";
+        Response.Headers["X-Accel-Buffering"] = "no";
+
+        await Response.Body.FlushAsync(cancellationToken);
+
+        var normalizedKey = NormalizeAppKey(appKey);
+
+        await foreach (var @event in _notificationStream.Subscribe(cancellationToken))
+        {
+            if (!string.IsNullOrEmpty(normalizedKey) && !string.Equals(@event.AppKey, normalizedKey, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var payload = JsonSerializer.Serialize(@event, SseJsonOptions);
+            await Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+        }
     }
 
     #endregion
@@ -295,10 +491,16 @@ public class ControlController : ControllerBase
             ? null
             : message.Link.Trim();
 
-        if (message.AppVersionId.HasValue && message.AppVersionId <= 0)
-        {
-            message.AppVersionId = null;
-        }
+        message.Targets = message.Targets
+            .Select(t => new NotificationTarget
+            {
+                AppKey = NormalizeAppKey(t.AppKey) ?? string.Empty,
+                AppVersionId = t.AppVersionId
+            })
+            .Where(t => !string.IsNullOrEmpty(t.AppKey))
+            .GroupBy(t => new { t.AppKey, t.AppVersionId })
+            .Select(g => g.First())
+            .ToList();
 
         ModelState.Clear();
         if (!TryValidateModel(message))
@@ -306,16 +508,47 @@ public class ControlController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        AppVersion? version = null;
-        if (message.AppVersionId.HasValue)
-        {
-            version = await _dbContext.AppVersions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.AppVersionId == message.AppVersionId.Value);
+        var appKeys = message.Targets.Select(t => t.AppKey).Distinct().ToList();
+        var applications = await _dbContext.Applications
+            .Where(a => appKeys.Contains(a.AppKey))
+            .ToListAsync();
 
-            if (version is null)
+        if (applications.Count != appKeys.Count)
+        {
+            var missing = appKeys.Except(applications.Select(a => a.AppKey)).ToList();
+            ModelState.AddModelError(nameof(message.Targets), $"Không tìm thấy appKey: {string.Join(", ", missing)}.");
+            return ValidationProblem(ModelState);
+        }
+
+        var versionIds = message.Targets
+            .Where(t => t.AppVersionId.HasValue)
+            .Select(t => t.AppVersionId!.Value)
+            .Distinct()
+            .ToList();
+
+        var versions = await _dbContext.AppVersions
+            .AsNoTracking()
+            .Where(v => versionIds.Contains(v.AppVersionId))
+            .ToListAsync();
+
+        if (versions.Count != versionIds.Count)
+        {
+            var missing = versionIds.Except(versions.Select(v => v.AppVersionId)).ToList();
+            ModelState.AddModelError(nameof(message.Targets), $"AppVersionId không tồn tại: {string.Join(", ", missing)}.");
+            return ValidationProblem(ModelState);
+        }
+
+        var appsByKey = applications.ToDictionary(a => a.AppKey);
+        var appsById = applications.ToDictionary(a => a.ApplicationId);
+        var versionsById = versions.ToDictionary(v => v.AppVersionId);
+
+        foreach (var target in message.Targets.Where(t => t.AppVersionId.HasValue))
+        {
+            var version = versionsById[target.AppVersionId!.Value];
+            var application = appsByKey[target.AppKey];
+            if (version.ApplicationId != application.ApplicationId)
             {
-                ModelState.AddModelError(nameof(message.AppVersionId), "AppVersionId không tồn tại.");
+                ModelState.AddModelError(nameof(target.AppVersionId), $"AppVersionId {version.AppVersionId} không thuộc appKey {application.AppKey}.");
                 return ValidationProblem(ModelState);
             }
         }
@@ -334,37 +567,72 @@ public class ControlController : ControllerBase
             }
         }
 
-        var entity = new Notification
-        {
-            Title = message.Title,
-            Message = message.Body,
-            Link = message.Link,
-            CreatedAt = DateTime.UtcNow,
-            AppVersionId = message.AppVersionId,
-            FileUrl = storedFileUrl,
-            IsActive = true
-        };
+        var now = DateTime.UtcNow;
+        var notifications = new List<Notification>();
 
-        _dbContext.Notifications.Add(entity);
+        foreach (var target in message.Targets)
+        {
+            var application = appsByKey[target.AppKey];
+            var notification = new Notification
+            {
+                ApplicationId = application.ApplicationId,
+                Title = message.Title,
+                Message = message.Body,
+                Link = message.Link,
+                AppVersionId = target.AppVersionId,
+                FileUrl = storedFileUrl,
+                CreatedAt = now,
+                IsActive = true
+            };
+            notifications.Add(notification);
+        }
+
+        _dbContext.Notifications.AddRange(notifications);
         await _dbContext.SaveChangesAsync();
+
+        var result = new List<object>();
+        foreach (var notification in notifications)
+        {
+            var application = appsById[notification.ApplicationId];
+            NotificationStreamVersion? versionPayload = null;
+            if (notification.AppVersionId.HasValue)
+            {
+                var version = versionsById[notification.AppVersionId.Value];
+                versionPayload = new NotificationStreamVersion(
+                    version.AppVersionId,
+                    version.VersionName,
+                    version.Platform,
+                    version.ReleaseNotes,
+                    version.FileUrl,
+                    version.FileChecksum,
+                    version.ReleaseDate);
+            }
+
+            await _notificationStream.PublishAsync(new NotificationStreamEvent(
+                application.AppKey,
+                application.DisplayName,
+                notification.NotificationId,
+                notification.Title,
+                notification.Message,
+                notification.CreatedAt,
+                notification.Link,
+                notification.FileUrl,
+                versionPayload));
+
+            result.Add(new
+            {
+                appKey = application.AppKey,
+                notificationId = notification.NotificationId,
+                appVersionId = notification.AppVersionId
+            });
+        }
 
         SetNoCache();
         return Ok(new
         {
             status = "sent",
-            notificationId = entity.NotificationId,
             fileUrl = storedFileUrl,
-            appVersion = version is null
-                ? null
-                : new
-                {
-                    version.AppVersionId,
-                    version.VersionName,
-                    version.ReleaseNotes,
-                    version.FileUrl,
-                    version.FileChecksum,
-                    version.ReleaseDate
-                }
+            notifications = result
         });
     }
 
@@ -436,6 +704,38 @@ public class ControlController : ControllerBase
         Response.Headers[HeaderNames.Expires] = "0";
     }
 
+    private static string? NormalizeAppKey(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim().ToLowerInvariant();
+    }
+
+    private static List<string> NormalizeAppKeyList(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return new List<string>();
+        }
+
+        return value
+            .Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(NormalizeAppKey)
+            .Where(k => !string.IsNullOrEmpty(k))
+            .Distinct()
+            .ToList()!;
+    }
+
+    private static DateTime NormalizeToUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
     public class SendNotificationForm
     {
         [Required, StringLength(100)]
@@ -446,6 +746,9 @@ public class ControlController : ControllerBase
 
         [StringLength(255)]
         public string? Link { get; set; }
+
+        [Required]
+        public string Id { get; set; } = default!;
 
         [Range(1, int.MaxValue)]
         public int? AppVersionId { get; set; }

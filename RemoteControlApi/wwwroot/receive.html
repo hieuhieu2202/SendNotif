@@ -108,12 +108,16 @@
             min-height: 120px;
             white-space: pre-wrap;
         }
+        .hint {
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
     </style>
 </head>
 <body>
 <header>
     <h1>Trung tâm nhận thông báo</h1>
-    <p>Nhập địa chỉ máy chủ API để xem thông báo và kiểm tra phiên bản mới nhất.</p>
+    <p class="hint">Thiết lập máy chủ API và app key để xem thông báo, kiểm tra bản cập nhật, hoặc kết nối realtime.</p>
 </header>
 
 <section class="card">
@@ -122,11 +126,18 @@
             <label for="baseUrl">Máy chủ API</label>
             <input id="baseUrl" type="url" placeholder="https://example.com" />
         </div>
-        <div style="display:flex; gap:0.75rem; align-items:flex-end;">
-            <button id="btnLoad">Tải thông báo</button>
-            <button id="btnRefresh" class="secondary">Làm mới</button>
+        <div>
+            <label for="appKey">App Key</label>
+            <input id="appKey" type="text" placeholder="vd: gotyfi" list="appKeyList" />
+            <datalist id="appKeyList"></datalist>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+            <button id="btnLoadApps" type="button">Tải app key</button>
+            <button id="btnLoad" type="button">Tải thông báo</button>
+            <button id="btnRefresh" type="button" class="secondary">Làm mới</button>
         </div>
     </div>
+    <p class="hint">Sau khi tải app key bạn có thể chọn nhanh trong danh sách gợi ý.</p>
 </section>
 
 <div class="grid grid-columns-2">
@@ -141,7 +152,7 @@
                 <label for="currentVersion">Phiên bản hiện tại *</label>
                 <input id="currentVersion" type="text" placeholder="vd: 1.0.0" required />
             </div>
-            <div style="display:flex; gap:0.75rem; align-items:center;">
+            <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
                 <button type="submit">Kiểm tra</button>
                 <button type="button" id="clearStatus" class="secondary">Xoá log</button>
             </div>
@@ -153,10 +164,15 @@
 <script>
 const state = {
     baseUrl: '',
-    notifications: []
+    appKey: '',
+    notifications: [],
+    apps: []
 };
 
 const baseUrlInput = document.getElementById('baseUrl');
+const appKeyInput = document.getElementById('appKey');
+const appKeyList = document.getElementById('appKeyList');
+const btnLoadApps = document.getElementById('btnLoadApps');
 const btnLoad = document.getElementById('btnLoad');
 const btnRefresh = document.getElementById('btnRefresh');
 const notifList = document.getElementById('notifList');
@@ -178,28 +194,62 @@ function setStatus(text, data) {
 async function fetchJson(path) {
     if (!state.baseUrl) throw new Error('Chưa thiết lập API base URL');
     const res = await fetch(`${state.baseUrl}${path}`);
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
     if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${txt}`);
+        throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     }
-    return res.json();
+    return data;
 }
 
-btnLoad.addEventListener('click', async () => {
+function ensureSetup() {
+    state.baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
+    state.appKey = appKeyInput.value.trim().toLowerCase();
+    if (!state.baseUrl) {
+        alert('Nhập địa chỉ máy chủ API trước.');
+        return false;
+    }
+    if (!state.appKey) {
+        alert('Vui lòng nhập app key.');
+        return false;
+    }
+    return true;
+}
+
+btnLoadApps.addEventListener('click', async () => {
     state.baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
     if (!state.baseUrl) {
         alert('Nhập địa chỉ máy chủ API trước.');
         return;
     }
+    try {
+        btnLoadApps.disabled = true;
+        notifList.innerHTML = '<p>Đang tải app key...</p>';
+        const data = await fetchJson('/api/control/applications');
+        state.apps = Array.isArray(data) ? data : [];
+        appKeyList.innerHTML = '';
+        state.apps.forEach(app => {
+            const option = document.createElement('option');
+            option.value = app.appKey;
+            appKeyList.appendChild(option);
+        });
+        notifList.innerHTML = '<p>Đã tải danh sách app key. Chọn app và tải thông báo.</p>';
+    } catch (err) {
+        notifList.innerHTML = `<p style="color:#dc2626;">Lỗi tải app key: ${err.message}</p>`;
+    } finally {
+        btnLoadApps.disabled = false;
+    }
+});
+
+btnLoad.addEventListener('click', async () => {
+    if (!ensureSetup()) return;
     await loadNotifications();
 });
 
-btnRefresh.addEventListener('click', () => {
-    if (!state.baseUrl) {
-        alert('Chưa thiết lập máy chủ API.');
-        return;
-    }
-    loadNotifications();
+btnRefresh.addEventListener('click', async () => {
+    if (!ensureSetup()) return;
+    await loadNotifications();
 });
 
 async function loadNotifications() {
@@ -207,7 +257,7 @@ async function loadNotifications() {
         btnLoad.disabled = true;
         btnRefresh.disabled = true;
         notifList.innerHTML = '<p>Đang tải thông báo...</p>';
-        const data = await fetchJson('/api/control/get-notifications?pageSize=50');
+        const data = await fetchJson(`/api/control/get-notifications?appKey=${encodeURIComponent(state.appKey)}&pageSize=50`);
         state.notifications = data.items ?? [];
         renderNotifications();
     } catch (err) {
@@ -231,7 +281,7 @@ function renderNotifications() {
         const linkHtml = item.link ? `<a href="${item.link}" target="_blank" rel="noopener">${item.link}</a>` : 'Không có';
         div.innerHTML = `
             <h3>${item.title}</h3>
-            <div class="notif-meta">${created}</div>
+            <div class="notif-meta">${created} • ${item.appName ?? ''} (${item.appKey})</div>
             <div class="notif-body">${item.message ?? ''}</div>
             <div class="notif-meta">Liên kết: ${linkHtml}</div>
         `;
@@ -245,7 +295,7 @@ function renderNotifications() {
             const block = document.createElement('div');
             block.className = 'update-block';
             block.innerHTML = `
-                <strong>Bản cập nhật: ${item.appVersion.versionName}</strong><br/>
+                <strong>Bản cập nhật: ${item.appVersion.versionName}</strong> — ${item.appVersion.platform ?? 'N/A'}<br/>
                 ${item.appVersion.releaseNotes ?? 'Không có ghi chú.'}<br/>
                 <a href="${item.appVersion.fileUrl}" target="_blank" rel="noopener">Tải gói cài đặt</a>
             `;
@@ -257,10 +307,7 @@ function renderNotifications() {
 
 versionForm.addEventListener('submit', async evt => {
     evt.preventDefault();
-    if (!state.baseUrl) {
-        alert('Chưa thiết lập máy chủ API.');
-        return;
-    }
+    if (!ensureSetup()) return;
     const current = document.getElementById('currentVersion').value.trim();
     if (!current) {
         alert('Vui lòng nhập phiên bản hiện tại.');
@@ -268,7 +315,7 @@ versionForm.addEventListener('submit', async evt => {
     }
     try {
         setStatus('Đang kiểm tra cập nhật...');
-        const data = await fetchJson(`/api/control/check-app-version?currentVersion=${encodeURIComponent(current)}`);
+        const data = await fetchJson(`/api/control/check-app-version?appKey=${encodeURIComponent(state.appKey)}&currentVersion=${encodeURIComponent(current)}`);
         setStatus('Kết quả kiểm tra:', data);
     } catch (err) {
         setStatus('Kiểm tra thất bại:', err.message);
@@ -278,6 +325,9 @@ versionForm.addEventListener('submit', async evt => {
 clearStatusBtn.addEventListener('click', () => {
     setStatus('Log đã được xoá.');
 });
+
+notifList.innerHTML = '<p>Nhập API base, app key và bấm "Tải thông báo" để bắt đầu.</p>';
+setStatus('Chưa thực hiện kiểm tra.');
 </script>
 </body>
 </html>

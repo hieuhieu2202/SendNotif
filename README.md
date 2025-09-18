@@ -1,151 +1,65 @@
 # RemoteControlApi
 
-Backend ASP.NET Core 8 quản lý thông báo và cập nhật ứng dụng. Ứng dụng sử dụng Entity Framework Core để tự tạo/cập nhật cơ sở
- dữ liệu SQL Server khi khởi động và cung cấp các API thuần tuý để quản trị viên thêm bản phát hành, gửi thông báo cũng như để
- client kiểm tra phiên bản mới.
+Backend ASP.NET Core 8 quản lý thông báo và cập nhật ứng dụng đa nền tảng. Dịch vụ dùng Entity Framework Core để tự chạy
+`Database.Migrate()` lúc khởi động và cung cấp bộ API REST cho quản trị viên cũng như ứng dụng di động.
 
-## 1. Kết nối CSDL & Migration tự động
-- Chuỗi kết nối mặc định: `Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertific
-ate=True`.
-- Có thể thay đổi trong `appsettings.json`, `appsettings.Development.json` hoặc biến môi trường `ConnectionStrings__AppDatabase`.
-- `Program.cs` đăng ký `AppDbContext` với `UseSqlServer(...)` và gọi `Database.MigrateAsync()` ngay khi dịch vụ khởi động ⇒ mọi
-migration được áp dụng tự động, không cần chạy tay.
+## 1. Cấu hình & khởi động
+- Chuỗi kết nối mặc định trỏ tới SQL Server nội bộ: `Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertificate=True`.
+- Có thể override bằng `appsettings.json`, `appsettings.Development.json` hoặc biến môi trường `ConnectionStrings__AppDatabase`.
+- `Program.cs` đăng ký `AppDbContext` với `UseSqlServer(...)`, thêm singleton `NotificationStream` để phát realtime và luôn gọi
+  `Database.MigrateAsync()` trước khi phục vụ request ⇒ không cần chạy migration thủ công.
 
-## 2. Mô hình dữ liệu tổng quan
-Hệ thống gồm hai bảng chính giống với tài liệu yêu cầu:
+## 2. Thiết kế cơ sở dữ liệu
 
-### 2.1 Bảng `AppVersions`
-Lưu các phiên bản ứng dụng đã phát hành.
-```sql
-CREATE TABLE AppVersions (
-    AppVersionId  INT PRIMARY KEY IDENTITY(1,1),
-    VersionName   NVARCHAR(50)  NOT NULL,
-    ReleaseNotes  NVARCHAR(MAX) NULL,
-    FileUrl       NVARCHAR(255) NOT NULL,
-    FileChecksum  NVARCHAR(128) NULL,
-    ReleaseDate   DATETIME2     NOT NULL
-);
 ```
-- Ràng buộc: `VersionName` là duy nhất để tránh trùng bản phát hành.
-
-### 2.2 Bảng `Notifications`
-Quản lý thông báo gửi tới toàn bộ người dùng. Một thông báo có thể liên kết với một bản cập nhật cụ thể hoặc chỉ là thông báo thường.
-```sql
-CREATE TABLE Notifications (
-    NotificationId INT PRIMARY KEY IDENTITY(1,1),
-    Title          NVARCHAR(100) NOT NULL,
-    Message        NVARCHAR(MAX) NOT NULL,
-    Link           NVARCHAR(255) NULL,
-    CreatedAt      DATETIME2     NOT NULL,
-    AppVersionId   INT           NULL,
-    FileUrl        NVARCHAR(255) NULL,
-    IsActive       BIT           NOT NULL DEFAULT 1,
-    CONSTRAINT FK_Notifications_AppVersions
-        FOREIGN KEY (AppVersionId) REFERENCES AppVersions(AppVersionId)
-        ON DELETE SET NULL
-);
-```
-- Trường `AppVersionId` có thể để trống. Nếu bản cập nhật bị xoá, thông báo sẽ tự động gỡ liên kết (giá trị về `NULL`).
-
-## 3. Flow nghiệp vụ chính
-1. **Admin phát hành ứng dụng mới**
-   - Gửi `POST /api/control/app-versions` để thêm bản ghi vào `AppVersions` (VersionName, ReleaseNotes, FileUrl, ReleaseDate...).
-   - Gửi tiếp `POST /api/control/send-notification-json` với `appVersionId` để thông báo người dùng về bản cập nhật.
-
-2. **Admin tạo thông báo thường**
-   - Gửi `POST /api/control/send-notification-json` chỉ với `title`, `body` (có thể kèm `link`, `fileBase64`).
-   - Hệ thống lưu bản ghi vào `Notifications` với `AppVersionId = NULL`.
-
-3. **Client lấy danh sách thông báo**
-   - Gọi `GET /api/control/get-notifications` để lấy danh sách đang kích hoạt (`IsActive = 1`) sắp xếp theo thời gian mới nhất.
-   - Nếu `AppVersionId` khác `NULL`, phản hồi sẽ chứa block `appVersion` với thông tin bản cập nhật.
-
-4. **Client hiển thị thông báo**
-   - Nếu phản hồi có `appVersion` ⇒ hiển thị banner cập nhật + nút tải về.
-   - Nếu không có ⇒ hiển thị thông báo thường.
-
-5. **Client kiểm tra phiên bản khi khởi động**
-   - Gọi `GET /api/control/check-app-version?currentVersion=...`.
-   - API so sánh với bản phát hành mới nhất (`AppVersions`) và trả về `updateAvailable` cùng thông tin bản mới nhất.
-
-## 4. Danh sách API
-Tất cả endpoint đều nằm dưới `/api/control`. Ví dụ bên dưới sử dụng `BASE_URL=https://your-host`.
-
-### 4.1 Quản lý phiên bản (`AppVersions`)
-| Endpoint | Mô tả |
-| --- | --- |
-| `GET /app-versions` | Liệt kê toàn bộ bản phát hành, sắp xếp mới nhất trước. |
-| `GET /app-versions/{id}` | Lấy chi tiết một bản phát hành. |
-| `POST /app-versions` | Thêm bản phát hành mới. |
-| `GET /check-app-version?currentVersion=1.1.0` | Client gửi version hiện có để kiểm tra bản mới. |
-
-**Ví dụ tạo bản phát hành**
-```bash
-curl -X POST "$BASE_URL/api/control/app-versions" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "versionName": "1.2.0",
-        "fileUrl": "https://cdn.example.com/app/v1.2.0.apk",
-        "fileChecksum": "c3d4e5",
-        "releaseNotes": "Fix lỗi đăng nhập, tối ưu UI",
-        "releaseDate": "2025-09-17T09:30:00Z"
-      }'
+Applications (AppKey duy nhất, DisplayName, Description, CreatedAt, IsActive)
+    ├─< AppVersions (VersionName, Platform, FileUrl, ReleaseNotes, ReleaseDate, FileChecksum)
+    └─< Notifications (Title, Message, Link, FileUrl, IsActive, CreatedAt, AppVersionId?)
 ```
 
-### 4.2 Thông báo (`Notifications`)
-| Endpoint | Mô tả |
-| --- | --- |
-| `POST /send-notification-json` | Gửi thông báo dạng JSON. Trường `appVersionId` tuỳ chọn. |
-| `POST /send-notification` | Gửi thông báo dạng multipart (kèm file nhị phân). |
-| `GET /get-notifications?page=1&pageSize=20` | Lấy danh sách thông báo đang kích hoạt. |
-| `POST /clear-notifications` | Xoá toàn bộ thông báo. |
+| Bảng | Mô tả | Ràng buộc chính |
+| --- | --- | --- |
+| **Applications** | Danh mục ứng dụng bạn quản lý (ví dụ: khách hàng, tài xế). | `AppKey` duy nhất, lưu chữ thường để truy vấn nhanh. |
+| **AppVersions** | Bản phát hành của từng ứng dụng. | `(ApplicationId, VersionName)` duy nhất, lưu `Platform`, link tải, checksum. |
+| **Notifications** | Thông báo gửi tới người dùng. | Bắt buộc gắn `ApplicationId`, có thể gắn `AppVersionId` (FK `SET NULL`). |
 
-**Ví dụ gửi thông báo gắn bản cập nhật**
-```bash
-curl -X POST "$BASE_URL/api/control/send-notification-json" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "title": "⚡ Cập nhật 1.2.0",
-        "body": "Fix lỗi đăng nhập + UI dark mode",
-        "link": "https://example.com/changelog",
-        "appVersionId": 3
-      }'
-```
+Tất cả các mốc thời gian dùng `DateTime.UtcNow`. Xoá ứng dụng ⇒ cascade xuống phiên bản và thông báo. Xoá bản phát hành ⇒ những
+thông báo gắn kèm tự rớt liên kết (`AppVersionId = NULL`).
 
-**Ví dụ phản hồi khi client lấy thông báo**
-```json
-{
-  "total": 2,
-  "page": 1,
-  "pageSize": 20,
-  "items": [
-    {
-      "notificationId": 3,
-      "title": "⚡ Cập nhật 1.2.0",
-      "message": "Fix lỗi đăng nhập + UI dark mode",
-      "createdAt": "2025-09-17T09:30:00Z",
-      "appVersion": {
-        "appVersionId": 3,
-        "versionName": "1.2.0",
-        "releaseNotes": "Fix lỗi đăng nhập, UI tối ưu",
-        "fileUrl": "https://example.com/v1.2.0.apk",
-        "fileChecksum": "c3d4e5",
-        "releaseDate": "2025-09-17T09:30:00Z"
-      }
-    },
-    {
-      "notificationId": 4,
-      "title": "🔧 Bảo trì hệ thống",
-      "message": "Hệ thống sẽ bảo trì 23h ngày 20/09",
-      "createdAt": "2025-09-17T12:00:00Z"
-    }
-  ]
-}
-```
+## 3. Luồng nghiệp vụ chính
+1. **Đăng ký ứng dụng** – `POST /api/control/applications` tạo `appKey` mới. Các request khác luôn dùng `appKey` đã đăng ký.
+2. **Phát hành phiên bản** – `POST /api/control/app-versions` với `appKey` tương ứng, cung cấp `versionName`, `fileUrl`, `releaseDate`...
+3. **Gửi thông báo** – `POST /api/control/send-notification-json` truyền `title`, `body` và mảng `targets` gồm `{ appKey, appVersionId? }`.
+   - Có thể đính kèm file qua `fileBase64` hoặc sử dụng endpoint multipart với trường `id=<appKey>`.
+   - API lưu bản ghi vào CSDL, phát sự kiện SSE tới mọi client đang nghe và trả về danh sách `notificationId` đã tạo.
+4. **Ứng dụng client**
+   - Gọi `GET /api/control/get-notifications?appKey=...` để lấy danh sách phân trang kèm block `appVersion` nếu có cập nhật.
+   - Gọi `GET /api/control/check-app-version?appKey=...&currentVersion=...` khi khởi động để kiểm tra bản mới nhất.
+   - (Tuỳ chọn) mở `EventSource` tới `/api/control/notifications-stream?appKey=...` để nhận realtime.
+5. **Dọn dữ liệu** – `POST /api/control/clear-notifications` xoá toàn bộ hoặc truyền `appKey` để xoá theo ứng dụng.
 
-## 5. Giao diện hỗ trợ quản trị
-Thư mục `wwwroot` cung cấp hai trang tĩnh:
-- `send.html`: form gửi thông báo nhanh (nhập tiêu đề, nội dung, tuỳ chọn chọn bản cập nhật và đính kèm file).
-- `receive.html`: bảng điều khiển xem thông báo, lọc theo thời gian và kiểm tra phiên bản.
+## 4. Danh sách endpoint
+Tất cả nằm dưới `/api/control`.
 
-Các trang này chỉ là công cụ tham khảo. Bạn có thể tích hợp trực tiếp các API trên vào hệ thống riêng của mình.
+| Endpoint | Phương thức | Mô tả |
+| --- | --- | --- |
+| `/applications` | GET | Danh sách ứng dụng, kèm tổng số bản phát hành/thông báo. |
+| `/applications` | POST | Tạo ứng dụng mới với `appKey`, `displayName`, `description`. |
+| `/app-versions` | GET | Liệt kê bản phát hành (lọc bằng `appKey` nếu cần). |
+| `/app-versions/{id}` | GET | Lấy chi tiết một bản phát hành. |
+| `/app-versions` | POST | Thêm bản phát hành cho một ứng dụng. |
+| `/check-app-version` | GET | Client cung cấp `appKey`, `currentVersion` để kiểm tra bản mới nhất. |
+| `/send-notification-json` | POST | Gửi thông báo JSON tới nhiều ứng dụng, hỗ trợ đính kèm file Base64. |
+| `/send-notification` | POST | Gửi thông báo dạng multipart, trường `id` là `appKey` (có thể phân tách bởi dấu phẩy). |
+| `/get-notifications` | GET | Lấy danh sách thông báo theo `appKey`, có phân trang. |
+| `/clear-notifications` | POST | Xoá thông báo (toàn bộ hoặc truyền `appKey`). |
+| `/notifications-stream` | GET | SSE realtime, trả từng sự kiện JSON khi có thông báo mới. |
+
+Chi tiết payload mẫu xem trong [`USAGE_GUIDE.md`](./USAGE_GUIDE.md).
+
+## 5. Giao diện quản trị tĩnh
+Thư mục `wwwroot` chứa hai trang hỗ trợ thao tác nhanh:
+- `send.html` – Dashboard gửi thông báo, quản lý `appKey`, thêm target nhiều ứng dụng, tải danh sách phiên bản.
+- `receive.html` – Bảng theo dõi thông báo theo `appKey`, hỗ trợ kiểm tra phiên bản và xem log realtime.
+
+Các trang này chỉ dùng cho kiểm thử/manual QA; sản phẩm thực tế nên tích hợp API vào hệ thống quản trị riêng.

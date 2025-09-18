@@ -22,6 +22,44 @@ namespace RemoteControlApi.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("RemoteControlApi.Entities.Application", b =>
+                {
+                    b.Property<int>("ApplicationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ApplicationId"));
+
+                    b.Property<string>("AppKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("ApplicationId");
+
+                    b.HasIndex("AppKey")
+                        .IsUnique();
+
+                    b.ToTable("Applications");
+                });
+
             modelBuilder.Entity("RemoteControlApi.Entities.AppVersion", b =>
                 {
                     b.Property<int>("AppVersionId")
@@ -29,6 +67,9 @@ namespace RemoteControlApi.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AppVersionId"));
+
+                    b.Property<int>("ApplicationId")
+                        .HasColumnType("int");
 
                     b.Property<string>("FileChecksum")
                         .HasMaxLength(128)
@@ -38,6 +79,10 @@ namespace RemoteControlApi.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Platform")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("ReleaseNotes")
                         .HasColumnType("nvarchar(max)");
@@ -52,7 +97,9 @@ namespace RemoteControlApi.Migrations
 
                     b.HasKey("AppVersionId");
 
-                    b.HasIndex("VersionName")
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("ApplicationId", "VersionName")
                         .IsUnique();
 
                     b.ToTable("AppVersions");
@@ -65,6 +112,9 @@ namespace RemoteControlApi.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<int>("ApplicationId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("AppVersionId")
                         .HasColumnType("int");
@@ -94,18 +144,49 @@ namespace RemoteControlApi.Migrations
 
                     b.HasKey("NotificationId");
 
+                    b.HasIndex("ApplicationId");
+
                     b.HasIndex("AppVersionId");
 
-                    b.HasIndex("IsActive", "CreatedAt");
+                    b.HasIndex("ApplicationId", "IsActive", "CreatedAt");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("RemoteControlApi.Entities.AppVersion", b =>
+                {
+                    b.HasOne("RemoteControlApi.Entities.Application", "Application")
+                        .WithMany("AppVersions")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Application");
+                });
+
+            modelBuilder.Entity("RemoteControlApi.Entities.Notification", b =>
+                {
+                    b.HasOne("RemoteControlApi.Entities.Application", "Application")
+                        .WithMany("Notifications")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("RemoteControlApi.Entities.AppVersion", "AppVersion")
                         .WithMany("Notifications")
                         .HasForeignKey("AppVersionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("Application");
+
                     b.Navigation("AppVersion");
+                });
+
+            modelBuilder.Entity("RemoteControlApi.Entities.Application", b =>
+                {
+                    b.Navigation("AppVersions");
+
+                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("RemoteControlApi.Entities.AppVersion", b =>

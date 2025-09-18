@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using RemoteControlApi.Data;
+using RemoteControlApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,7 @@ var connectionString = builder.Configuration.GetConnectionString("AppDatabase")
     ?? "Server=10.220.130.125,1453;Database=SendNoti;User ID=MBD-AIOT;Password=123456ad!;TrustServerCertificate=True";
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddSingleton<INotificationStream, NotificationStream>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
