@@ -47,7 +47,7 @@ Lưu thông báo gửi tới người dùng của từng ứng dụng.
 CREATE TABLE Notifications (
     NotificationId INT IDENTITY(1,1) PRIMARY KEY,
     ApplicationId  INT NOT NULL FOREIGN KEY REFERENCES Applications(ApplicationId) ON DELETE CASCADE,
-    AppVersionId   INT NULL FOREIGN KEY REFERENCES AppVersions(AppVersionId) ON DELETE SET NULL,
+    AppVersionId   INT NULL FOREIGN KEY REFERENCES AppVersions(AppVersionId) ON DELETE NO ACTION,
     Title          NVARCHAR(100) NOT NULL,
     Message        NVARCHAR(MAX) NOT NULL,
     Link           NVARCHAR(255) NULL,
@@ -56,7 +56,7 @@ CREATE TABLE Notifications (
     IsActive       BIT NOT NULL DEFAULT 1
 );
 ```
-Mỗi thông báo gắn với đúng một ứng dụng. Nếu cần gửi cùng nội dung cho nhiều app, API sẽ nhân bản và ghi nhiều bản ghi vào bảng `Notifications` (mỗi bản ghi ứng với một `AppKey`).
+Mỗi thông báo gắn với đúng một ứng dụng. Nếu cần gửi cùng nội dung cho nhiều app, API sẽ nhân bản và ghi nhiều bản ghi vào bảng `Notifications` (mỗi bản ghi ứng với một `AppKey`). Trên SQL Server, ràng buộc `AppVersionId` sử dụng `ON DELETE NO ACTION` để tránh lỗi "multiple cascade paths", nên hãy xoá hoặc gỡ liên kết thông báo trước khi xoá bản phát hành liên quan.
 
 ## 3. Luồng nghiệp vụ chính
 1. **Tạo ứng dụng mới**

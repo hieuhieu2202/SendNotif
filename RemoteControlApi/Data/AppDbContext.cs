@@ -58,7 +58,7 @@ public class AppDbContext : DbContext
             entity.HasOne(n => n.AppVersion)
                 .WithMany(v => v.Notifications)
                 .HasForeignKey(n => n.AppVersionId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasIndex(n => new { n.ApplicationId, n.CreatedAt });
         });
