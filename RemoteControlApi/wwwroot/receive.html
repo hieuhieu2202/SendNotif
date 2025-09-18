@@ -66,7 +66,7 @@
         }
         @media (min-width: 992px) {
             .grid-columns-2 {
-                grid-template-columns: 2fr 3fr;
+                grid-template-columns: 3fr 2fr;
             }
         }
         .notif-list {
@@ -113,7 +113,7 @@
 <body>
 <header>
     <h1>Trung tâm nhận thông báo</h1>
-    <p>Chọn ứng dụng để xem thông báo mới nhất và kiểm tra phiên bản.</p>
+    <p>Nhập địa chỉ máy chủ API để xem thông báo và kiểm tra phiên bản mới nhất.</p>
 </header>
 
 <section class="card">
@@ -123,14 +123,8 @@
             <input id="baseUrl" type="url" placeholder="https://example.com" />
         </div>
         <div style="display:flex; gap:0.75rem; align-items:flex-end;">
-            <button id="btnLoadApps">Tải ứng dụng</button>
-            <button id="btnRefresh" class="secondary">Làm mới thông báo</button>
-        </div>
-        <div>
-            <label for="appSelect">Ứng dụng</label>
-            <select id="appSelect" disabled>
-                <option value="">-- Chưa chọn --</option>
-            </select>
+            <button id="btnLoad">Tải thông báo</button>
+            <button id="btnRefresh" class="secondary">Làm mới</button>
         </div>
     </div>
 </section>
@@ -159,15 +153,12 @@
 <script>
 const state = {
     baseUrl: '',
-    apps: [],
-    selectedApp: null,
     notifications: []
 };
 
 const baseUrlInput = document.getElementById('baseUrl');
-const btnLoadApps = document.getElementById('btnLoadApps');
+const btnLoad = document.getElementById('btnLoad');
 const btnRefresh = document.getElementById('btnRefresh');
-const appSelect = document.getElementById('appSelect');
 const notifList = document.getElementById('notifList');
 const versionForm = document.getElementById('versionForm');
 const statusEl = document.getElementById('status');
@@ -194,59 +185,35 @@ async function fetchJson(path) {
     return res.json();
 }
 
-btnLoadApps.addEventListener('click', async () => {
+btnLoad.addEventListener('click', async () => {
     state.baseUrl = normalizeBaseUrl(baseUrlInput.value.trim());
     if (!state.baseUrl) {
         alert('Nhập địa chỉ máy chủ API trước.');
         return;
     }
-    try {
-        btnLoadApps.disabled = true;
-        appSelect.disabled = true;
-        appSelect.innerHTML = '<option value="">-- Đang tải --</option>';
-        const apps = await fetchJson('/api/control/applications');
-        state.apps = apps;
-        renderAppOptions();
-    } catch (err) {
-        alert('Không thể tải ứng dụng: ' + err.message);
-    } finally {
-        btnLoadApps.disabled = false;
-    }
-});
-
-function renderAppOptions() {
-    appSelect.innerHTML = '<option value="">-- Chọn ứng dụng --</option>';
-    state.apps.forEach(app => {
-        const option = document.createElement('option');
-        option.value = app.appKey;
-        option.textContent = `${app.displayName} (${app.appKey})`;
-        appSelect.appendChild(option);
-    });
-    appSelect.disabled = state.apps.length === 0;
-}
-
-appSelect.addEventListener('change', async () => {
-    const key = appSelect.value;
-    if (!key) {
-        state.selectedApp = null;
-        notifList.innerHTML = '';
-        return;
-    }
-    state.selectedApp = key;
     await loadNotifications();
 });
 
+btnRefresh.addEventListener('click', () => {
+    if (!state.baseUrl) {
+        alert('Chưa thiết lập máy chủ API.');
+        return;
+    }
+    loadNotifications();
+});
+
 async function loadNotifications() {
-    if (!state.selectedApp) return;
     try {
+        btnLoad.disabled = true;
         btnRefresh.disabled = true;
         notifList.innerHTML = '<p>Đang tải thông báo...</p>';
-        const data = await fetchJson(`/api/control/get-notifications?appKey=${encodeURIComponent(state.selectedApp)}&pageSize=50`);
+        const data = await fetchJson('/api/control/get-notifications?pageSize=50');
         state.notifications = data.items ?? [];
         renderNotifications();
     } catch (err) {
         notifList.innerHTML = `<p style="color:#dc2626;">Lỗi tải thông báo: ${err.message}</p>`;
     } finally {
+        btnLoad.disabled = false;
         btnRefresh.disabled = false;
     }
 }
@@ -264,7 +231,7 @@ function renderNotifications() {
         const linkHtml = item.link ? `<a href="${item.link}" target="_blank" rel="noopener">${item.link}</a>` : 'Không có';
         div.innerHTML = `
             <h3>${item.title}</h3>
-            <div class="notif-meta">${created} • ${item.appName ?? item.appKey}</div>
+            <div class="notif-meta">${created}</div>
             <div class="notif-body">${item.message ?? ''}</div>
             <div class="notif-meta">Liên kết: ${linkHtml}</div>
         `;
@@ -277,9 +244,8 @@ function renderNotifications() {
         if (item.appVersion) {
             const block = document.createElement('div');
             block.className = 'update-block';
-            const platform = item.appVersion.platform ? ` (${item.appVersion.platform})` : '';
             block.innerHTML = `
-                <strong>Bản cập nhật: ${item.appVersion.versionName}${platform}</strong><br/>
+                <strong>Bản cập nhật: ${item.appVersion.versionName}</strong><br/>
                 ${item.appVersion.releaseNotes ?? 'Không có ghi chú.'}<br/>
                 <a href="${item.appVersion.fileUrl}" target="_blank" rel="noopener">Tải gói cài đặt</a>
             `;
@@ -289,12 +255,10 @@ function renderNotifications() {
     });
 }
 
-btnRefresh.addEventListener('click', () => loadNotifications());
-
 versionForm.addEventListener('submit', async evt => {
     evt.preventDefault();
-    if (!state.selectedApp) {
-        alert('Chọn ứng dụng trước khi kiểm tra phiên bản.');
+    if (!state.baseUrl) {
+        alert('Chưa thiết lập máy chủ API.');
         return;
     }
     const current = document.getElementById('currentVersion').value.trim();
@@ -304,7 +268,7 @@ versionForm.addEventListener('submit', async evt => {
     }
     try {
         setStatus('Đang kiểm tra cập nhật...');
-        const data = await fetchJson(`/api/control/check-app-version?appKey=${encodeURIComponent(state.selectedApp)}&currentVersion=${encodeURIComponent(current)}`);
+        const data = await fetchJson(`/api/control/check-app-version?currentVersion=${encodeURIComponent(current)}`);
         setStatus('Kết quả kiểm tra:', data);
     } catch (err) {
         setStatus('Kiểm tra thất bại:', err.message);

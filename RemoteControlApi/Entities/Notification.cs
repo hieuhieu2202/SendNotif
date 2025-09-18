@@ -17,9 +17,7 @@ public class Notification
     [MaxLength(255)]
     public string? Link { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
-    public int ApplicationId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int? AppVersionId { get; set; }
 
@@ -27,8 +25,6 @@ public class Notification
     public string? FileUrl { get; set; }
 
     public bool IsActive { get; set; } = true;
-
-    public Application Application { get; set; } = default!;
 
     public AppVersion? AppVersion { get; set; }
 }

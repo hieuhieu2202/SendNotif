@@ -11,9 +11,6 @@ public class AppVersion
     [MaxLength(50)]
     public string VersionName { get; set; } = default!;
 
-    [MaxLength(30)]
-    public string? Platform { get; set; }
-
     public string? ReleaseNotes { get; set; }
 
     [Required]
@@ -24,10 +21,6 @@ public class AppVersion
     public string? FileChecksum { get; set; }
 
     public DateTime ReleaseDate { get; set; }
-
-    public int ApplicationId { get; set; }
-
-    public Application Application { get; set; } = default!;
 
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

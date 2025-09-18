@@ -1,109 +1,52 @@
 # Hướng dẫn sử dụng hệ thống thông báo & cập nhật ứng dụng
 
-Tài liệu này tổng hợp chức năng, danh sách API và ví dụ payload để bạn có thể cấu hình, kiểm thử hệ thống nhanh chóng.
+Tài liệu này tóm tắt chức năng, danh sách API và payload mẫu để bạn cấu hình cũng như kiểm thử hệ thống nhanh chóng. Tất cả endpo
+int đều nằm dưới `/api/control`.
 
-> **Cơ bản**: tất cả endpoint đều nằm dưới `/api/control`. Server tự chạy `Database.Migrate()` khi khởi động nên chỉ cần cấu hình chuỗi kết nối trong `appsettings*.json` là có thể sử dụng.
+> **Lưu ý:** Ứng dụng tự gọi `Database.Migrate()` khi khởi động ⇒ chỉ cần cấu hình chuỗi kết nối SQL Server là có thể sử dụng.
 
 ## 1. Chức năng chính
 
 | Nhóm | Mô tả |
 | --- | --- |
-| Quản lý ứng dụng | Đăng ký app mới với `appKey` riêng, xem danh sách ứng dụng đang hoạt động. |
-| Quản lý phiên bản | Lưu trữ phiên bản ứng dụng (Android/iOS/khác), ghi nhận link tải, checksum, ngày phát hành. |
-| Gửi thông báo đa ứng dụng | Một request có thể gửi thông báo tới nhiều app khác nhau, kèm link, file đính kèm, hoặc liên kết tới một bản cập nhật cụ thể. |
-| Lấy thông báo & realtime | Client truy vấn danh sách thông báo theo `appKey` hoặc kết nối SSE để nhận realtime. |
-| Kiểm tra cập nhật | Client gửi `currentVersion` để so sánh với bản phát hành mới nhất của ứng dụng trên server. |
-| Dọn dữ liệu | API hỗ trợ xoá toàn bộ thông báo (tất cả app hoặc theo từng `appKey`). |
+| Quản lý phiên bản | Thêm/sửa đổi thông tin bản phát hành (link tải, checksum, ghi chú, ngày phát hành). |
+| Gửi thông báo | Gửi thông báo thường hoặc gắn với một `appVersionId`, có thể đính kèm file. |
+| Lấy thông báo | Client truy vấn danh sách thông báo đang kích hoạt. |
+| Kiểm tra cập nhật | Client cung cấp phiên bản hiện có để so sánh với bản mới nhất trên server. |
+| Dọn dữ liệu | Xoá toàn bộ thông báo (tuỳ chọn khi cần reset). |
 
-## 2. Danh sách API và payload kiểm thử
+## 2. API và ví dụ kiểm thử
+Giả sử đặt `BASE_URL=https://your-host`.
 
-Các ví dụ dưới sử dụng biến `BASE_URL=https://your-host` để dễ thay thế. Nếu chạy local có thể đổi thành `http://localhost:5000`.
-
-### 2.1. Ứng dụng (Applications)
-
-**Lấy danh sách ứng dụng**
-```bash
-curl "$BASE_URL/api/control/applications"
-```
-Phản hồi mẫu:
-```json
-[
-  {
-    "applicationId": 1,
-    "appKey": "gotyfi",
-    "displayName": "GoTyfi",
-    "description": "Ứng dụng gọi xe",
-    "isActive": true,
-    "createdAt": "2025-07-01T09:00:00Z",
-    "versionCount": 3,
-    "notificationCount": 12
-  }
-]
-```
-
-**Tạo ứng dụng mới**
-```bash
-curl -X POST "$BASE_URL/api/control/applications" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "appKey": "gotyfi",
-        "displayName": "GoTyfi",
-        "description": "Ứng dụng gọi xe"
-      }'
-```
-Body kiểm thử (copy vào Postman):
-```json
-{
-  "appKey": "gotyfi",
-  "displayName": "GoTyfi",
-  "description": "Ứng dụng gọi xe"
-}
-```
-
-### 2.2. Phiên bản ứng dụng (App Versions)
-
-**Tạo bản phát hành mới**
+### 2.1. Phiên bản ứng dụng (AppVersions)
+**Thêm bản phát hành mới**
 ```bash
 curl -X POST "$BASE_URL/api/control/app-versions" \
   -H "Content-Type: application/json" \
   -d '{
-        "appKey": "gotyfi",
         "versionName": "1.2.0",
-        "platform": "android",
-        "fileUrl": "https://cdn.example.com/gotyfi/v1.2.0.apk",
-        "fileChecksum": "c3d4e5f6",
         "releaseNotes": "Fix lỗi đăng nhập, tối ưu UI",
+        "fileUrl": "https://cdn.example.com/app/v1.2.0.apk",
+        "fileChecksum": "c3d4e5",
         "releaseDate": "2025-09-17T09:30:00Z"
       }'
-```
-Body kiểm thử:
-```json
-{
-  "appKey": "gotyfi",
-  "versionName": "1.2.0",
-  "platform": "android",
-  "fileUrl": "https://cdn.example.com/gotyfi/v1.2.0.apk",
-  "fileChecksum": "c3d4e5f6",
-  "releaseNotes": "Fix lỗi đăng nhập, tối ưu UI",
-  "releaseDate": "2025-09-17T09:30:00Z"
-}
 ```
 
 **Liệt kê các bản phát hành**
 ```bash
-curl "$BASE_URL/api/control/app-versions?appKey=gotyfi"
+curl "$BASE_URL/api/control/app-versions"
 ```
 
 **Tra cứu bản phát hành theo ID**
 ```bash
-curl "$BASE_URL/api/control/app-versions/10"
+curl "$BASE_URL/api/control/app-versions/3"
 ```
 
 **Client kiểm tra cập nhật**
 ```bash
-curl "$BASE_URL/api/control/check-app-version?appKey=gotyfi&currentVersion=1.1.0"
+curl "$BASE_URL/api/control/check-app-version?currentVersion=1.1.0"
 ```
-Phản hồi mẫu khi có bản mới:
+Phản hồi khi có bản mới:
 ```json
 {
   "currentVersion": "1.1.0",
@@ -111,122 +54,88 @@ Phản hồi mẫu khi có bản mới:
   "updateAvailable": true,
   "comparisonNote": null,
   "latestRelease": {
-    "appVersionId": 42,
+    "appVersionId": 3,
     "versionName": "1.2.0",
-    "platform": "android",
     "releaseNotes": "Fix lỗi đăng nhập, tối ưu UI",
-    "fileUrl": "https://cdn.example.com/gotyfi/v1.2.0.apk",
-    "fileChecksum": "c3d4e5f6",
+    "fileUrl": "https://cdn.example.com/app/v1.2.0.apk",
+    "fileChecksum": "c3d4e5",
     "releaseDate": "2025-09-17T09:30:00Z"
   }
 }
 ```
 
-### 2.3. Thông báo (Notifications)
-
-**Gửi thông báo JSON tới nhiều ứng dụng**
+### 2.2. Thông báo (Notifications)
+**Gửi thông báo JSON**
 ```bash
 curl -X POST "$BASE_URL/api/control/send-notification-json" \
   -H "Content-Type: application/json" \
   -d '{
-        "title": "🚀 Cập nhật mới",
-        "body": "Đã có phiên bản 1.2.0",
+        "title": "⚡ Cập nhật 1.2.0",
+        "body": "Fix lỗi đăng nhập + UI dark mode",
         "link": "https://example.com/changelog",
-        "fileBase64": null,
-        "fileName": null,
-        "targets": [
-          { "appKey": "gotyfi", "appVersionId": 42 },
-          { "appKey": "gotyfi-driver" }
-        ]
+        "appVersionId": 3
       }'
 ```
-Body kiểm thử:
-```json
-{
-  "title": "🚀 Cập nhật mới",
-  "body": "Đã có phiên bản 1.2.0",
-  "link": "https://example.com/changelog",
-  "fileBase64": null,
-  "fileName": null,
-  "targets": [
-    { "appKey": "gotyfi", "appVersionId": 42 },
-    { "appKey": "gotyfi-driver" }
-  ]
-}
-```
-Phản hồi thành công:
-```json
-{
-  "status": "sent",
-  "fileUrl": null,
-  "notifications": [
-    { "appKey": "gotyfi", "notificationId": 105, "appVersionId": 42 },
-    { "appKey": "gotyfi-driver", "notificationId": 106, "appVersionId": null }
-  ]
-}
-```
 
-**Gửi thông báo kèm file đính kèm (multipart/form-data)**
+**Gửi thông báo kèm file (multipart/form-data)**
 ```bash
 curl -X POST "$BASE_URL/api/control/send-notification" \
   -F "title=Hướng dẫn sử dụng mới" \
-  -F "body=File PDF hướng dẫn sử dụng ứng dụng" \
-  -F "id=gotyfi" \
+  -F "body=Tệp PDF hướng dẫn sử dụng ứng dụng" \
+  -F "appVersionId=" \
   -F "file=@/path/to/guide.pdf"
 ```
-Trường `id` đại diện cho `appKey`. API sẽ tự chuyển file thành đường dẫn tải và lưu trong bảng `Notifications`.
 
 **Client lấy danh sách thông báo**
 ```bash
-curl "$BASE_URL/api/control/get-notifications?appKey=gotyfi&page=1&pageSize=20"
+curl "$BASE_URL/api/control/get-notifications?page=1&pageSize=20"
 ```
 Phản hồi mẫu:
 ```json
 {
-  "total": 3,
+  "total": 2,
   "page": 1,
   "pageSize": 20,
   "items": [
     {
-      "notificationId": 105,
-      "title": "🚀 Cập nhật mới",
-      "message": "Đã có phiên bản 1.2.0",
-      "createdAt": "2025-09-17T09:35:00Z",
+      "notificationId": 3,
+      "title": "⚡ Cập nhật 1.2.0",
+      "message": "Fix lỗi đăng nhập + UI dark mode",
+      "createdAt": "2025-09-17T09:30:00Z",
       "link": "https://example.com/changelog",
       "fileUrl": null,
-      "appKey": "gotyfi",
-      "appName": "GoTyfi",
+      "isActive": true,
       "appVersion": {
-        "appVersionId": 42,
+        "appVersionId": 3,
         "versionName": "1.2.0",
-        "platform": "android",
         "releaseNotes": "Fix lỗi đăng nhập, tối ưu UI",
-        "fileUrl": "https://cdn.example.com/gotyfi/v1.2.0.apk",
-        "fileChecksum": "c3d4e5f6",
+        "fileUrl": "https://cdn.example.com/app/v1.2.0.apk",
+        "fileChecksum": "c3d4e5",
         "releaseDate": "2025-09-17T09:30:00Z"
       }
+    },
+    {
+      "notificationId": 4,
+      "title": "🔧 Bảo trì hệ thống",
+      "message": "Hệ thống sẽ bảo trì 23h ngày 20/09",
+      "createdAt": "2025-09-17T12:00:00Z",
+      "link": null,
+      "fileUrl": null,
+      "isActive": true
     }
   ]
 }
 ```
 
-**Xoá thông báo**
-- Xoá toàn bộ: `curl -X POST "$BASE_URL/api/control/clear-notifications"`
-- Xoá theo ứng dụng: `curl -X POST "$BASE_URL/api/control/clear-notifications?appKey=gotyfi"`
-
-**Nhận realtime qua SSE**
+**Xoá toàn bộ thông báo**
 ```bash
-curl "$BASE_URL/api/control/notifications-stream"
+curl -X POST "$BASE_URL/api/control/clear-notifications"
 ```
-Luồng trả về từng sự kiện JSON mỗi khi có thông báo mới được ghi vào database.
 
-## 3. Checklist tích hợp
+## 3. Checklist tích hợp nhanh
+1. Cấu hình chuỗi kết nối SQL Server và chạy dịch vụ ⇒ migration tự áp dụng.
+2. Thêm bản phát hành đầu tiên bằng `POST /app-versions` (tuỳ chọn, nếu muốn thông báo cập nhật).
+3. Gửi thông báo qua `POST /send-notification-json` hoặc multipart.
+4. Ứng dụng client gọi `GET /get-notifications` và `GET /check-app-version` khi cần.
 
-1. Tạo ứng dụng bằng `POST /applications`.
-2. Thêm tối thiểu một bản phát hành qua `POST /app-versions` nếu muốn gắn thông báo với cập nhật.
-3. Dùng `POST /send-notification-json` để gửi thông báo cho một hoặc nhiều app.
-4. Client gọi `GET /get-notifications` để hiển thị danh sách và `GET /check-app-version` khi cần kiểm tra cập nhật.
-5. (Tuỳ chọn) kết nối `notifications-stream` để cập nhật realtime.
-
-> **Mẹo**: Bạn có thể lưu các JSON mẫu trong Postman/Insomnia để kiểm thử nhanh mỗi khi triển khai bản mới.
-
+> **Mẹo:** Lưu các payload JSON mẫu vào Postman/Insomnia để tái sử dụng khi triển khai các môi trường khác nhau.
