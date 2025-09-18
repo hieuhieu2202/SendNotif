@@ -240,6 +240,51 @@
 </div>
 
 <section class="card">
+    <h2>Tạo bản phát hành mới</h2>
+    <form id="versionForm" class="grid" style="gap:0.75rem;">
+        <div class="grid" style="gap:0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <label for="versionAppKey">Ứng dụng *</label>
+                <select id="versionAppKey" required>
+                    <option value="">-- Chọn ứng dụng --</option>
+                </select>
+            </div>
+            <div>
+                <label for="versionName">Tên phiên bản *</label>
+                <input id="versionName" type="text" required maxlength="50" placeholder="vd: 1.3.0" />
+            </div>
+        </div>
+        <div class="grid" style="gap:0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <label for="versionPlatform">Nền tảng</label>
+                <input id="versionPlatform" type="text" maxlength="30" placeholder="android / ios / desktop" />
+            </div>
+            <div>
+                <label for="versionReleaseDate">Ngày phát hành *</label>
+                <input id="versionReleaseDate" type="datetime-local" required />
+            </div>
+        </div>
+        <div>
+            <label for="versionFileUrl">Đường dẫn tải *</label>
+            <input id="versionFileUrl" type="url" required maxlength="255" placeholder="https://cdn.example.com/app/v1.3.0.apk" />
+        </div>
+        <div>
+            <label for="versionChecksum">Checksum (SHA-256)</label>
+            <input id="versionChecksum" type="text" maxlength="128" placeholder="Tuỳ chọn" />
+        </div>
+        <div>
+            <label for="versionNotes">Ghi chú phát hành</label>
+            <textarea id="versionNotes" maxlength="4000" placeholder="Thay đổi, tính năng, hướng dẫn..."></textarea>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+            <button type="submit">Lưu bản phát hành</button>
+            <button type="button" id="versionFormReset" class="secondary">Làm mới</button>
+        </div>
+        <p class="hint">Sau khi lưu, phiên bản mới sẽ xuất hiện trong danh sách và dropdown gắn bản cập nhật của khu vực gửi thông báo.</p>
+    </form>
+</section>
+
+<section class="card">
     <h2>Kết quả / Log</h2>
     <pre id="status" class="status">Chưa thực hiện thao tác nào.</pre>
 </section>
@@ -262,6 +307,9 @@ const targetList = document.getElementById('targetList');
 const btnAddTarget = document.getElementById('btnAddTarget');
 const appForm = document.getElementById('appForm');
 const btnClearAppForm = document.getElementById('btnClearAppForm');
+const versionForm = document.getElementById('versionForm');
+const versionFormReset = document.getElementById('versionFormReset');
+const versionAppKeySelect = document.getElementById('versionAppKey');
 const fileInput = document.getElementById('fileInput');
 const fileInfo = document.getElementById('fileInfo');
 const sendForm = document.getElementById('sendForm');
@@ -295,6 +343,7 @@ function renderApps() {
     state.versions.clear();
     appList.innerHTML = '';
     versionAppSelect.innerHTML = '<option value="">-- Chọn ứng dụng --</option>';
+    versionAppKeySelect.innerHTML = '<option value="">-- Chọn ứng dụng --</option>';
 
     if (state.apps.length === 0) {
         appList.innerHTML = '<li>Chưa có ứng dụng. Hãy tạo app mới hoặc tải lại danh sách.</li>';
@@ -314,6 +363,9 @@ function renderApps() {
         option.value = app.appKey;
         option.textContent = `${app.displayName} (${app.appKey})`;
         versionAppSelect.appendChild(option);
+
+        const formOption = option.cloneNode(true);
+        versionAppKeySelect.appendChild(formOption);
     });
 
     syncTargetAppOptions();
@@ -491,6 +543,79 @@ appForm.addEventListener('submit', async evt => {
 
 btnClearAppForm.addEventListener('click', () => {
     appForm.reset();
+});
+
+versionForm.addEventListener('submit', async evt => {
+    evt.preventDefault();
+    state.baseUrl = normalizeBaseUrl(apiBaseInput.value.trim());
+    if (!state.baseUrl) {
+        alert('Chưa cấu hình máy chủ API.');
+        return;
+    }
+
+    const appKey = versionAppKeySelect.value;
+    if (!appKey) {
+        alert('Hãy chọn ứng dụng để gắn bản phát hành.');
+        return;
+    }
+
+    const releaseDateRaw = document.getElementById('versionReleaseDate').value;
+    if (!releaseDateRaw) {
+        alert('Vui lòng chọn ngày phát hành.');
+        return;
+    }
+
+    const releaseDate = new Date(releaseDateRaw);
+    if (Number.isNaN(releaseDate.getTime())) {
+        alert('Ngày phát hành không hợp lệ.');
+        return;
+    }
+
+    const payload = {
+        appKey,
+        versionName: document.getElementById('versionName').value.trim(),
+        platform: document.getElementById('versionPlatform').value.trim() || null,
+        fileUrl: document.getElementById('versionFileUrl').value.trim(),
+        fileChecksum: document.getElementById('versionChecksum').value.trim() || null,
+        releaseNotes: document.getElementById('versionNotes').value.trim() || null,
+        releaseDate: releaseDate.toISOString()
+    };
+
+    try {
+        updateStatus('Đang lưu bản phát hành...', payload);
+        const data = await fetchJson('/api/control/app-versions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        updateStatus('Đã tạo bản phát hành.', data);
+        versionForm.reset();
+        const releaseInput = document.getElementById('versionReleaseDate');
+        if (releaseInput) {
+            releaseInput.value = '';
+        }
+        state.versions.delete(appKey);
+        if (versionAppSelect.value === appKey) {
+            refreshVersionPanel(appKey);
+        }
+        targetList.querySelectorAll('.target-row').forEach(row => {
+            const select = row.querySelector('select[data-role="app"]');
+            const versionSelect = row.querySelector('select[data-role="version"]');
+            if (select.value === appKey) {
+                populateVersionSelect(versionSelect, appKey);
+            }
+        });
+    } catch (err) {
+        updateStatus('Tạo bản phát hành thất bại:', err.message);
+    }
+});
+
+versionFormReset.addEventListener('click', () => {
+    versionForm.reset();
+    const releaseInput = document.getElementById('versionReleaseDate');
+    if (releaseInput) {
+        releaseInput.value = '';
+    }
 });
 
 fileInput.addEventListener('change', () => {
