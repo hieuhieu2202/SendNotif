@@ -361,8 +361,7 @@ public class ControlController : ControllerBase
         var query = _dbContext.AppVersions
             .AsNoTracking()
             .Include(v => v.Application)
-            .OrderByDescending(v => v.ReleaseDate)
-            .ThenByDescending(v => v.AppVersionId);
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(appKey))
         {
@@ -371,6 +370,8 @@ public class ControlController : ControllerBase
         }
 
         var versions = await query
+            .OrderByDescending(v => v.ReleaseDate)
+            .ThenByDescending(v => v.AppVersionId)
             .Select(v => new
             {
                 v.AppVersionId,
